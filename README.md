@@ -32,12 +32,13 @@ Scanning is not available for ios devices as the used library can not access cam
 1. clone repository to your server
 1. rename/ move `ilsc.cfg_default` to `ilsc.cfg` and `flask.cfg_default` to `flask.cfg`
 1. edit both configuration files to your needs
+   1. sqlite database is created automatically, same for gpg-keys
 1. rename & edit `default_gprd.html` and `default_imprint.html` to your needs. Also address these files within `ilsc.cfg`
 1. (optionally if you want to use ssl) set `usessl` within `ilsc.cfg` to `True` and configure location of server certificates within this file
 1. run `python main.py --config ./ilsc.cfg --flask-config ./flask.cfg` either via screen or as system service
 1. login at `[yourdomain]:[port]/signin`
-  1. default user: `admin`
-  1. default password: `admin`
+   1. default user: `admin`
+   1. default password: `admin`
 1. open backend via "backend" top right
 1. change username and password and add (optional) users
 
