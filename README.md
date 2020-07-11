@@ -5,7 +5,7 @@ A simple web application to collect contact information from visitors during the
 Basic intention is to provide an alternative way to collect visitor data during SARS CoV 2 pandemic. Since regulations force us to collect this data and no mobile phone app should be used we started this approach
 
 ## How it works
-Basicly an visitor opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
+basically a visitor opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
 Visitor data is stored assymetric (why cause i can) within database and only users with admin permission can read this data
 
 ## Requirements
