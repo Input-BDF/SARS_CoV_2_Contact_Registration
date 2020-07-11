@@ -1,0 +1,175 @@
+body {
+	background-color: #303030;
+}
+a,
+a:visited {
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+}
+a:focus,
+a:hover {
+  text-decoration: underline;
+  color: #f00;
+}
+
+a.longlink {
+	word-break: break-all;
+}
+
+table th {
+	text-align: left;
+}
+[href^="http"]:not([href*="bdclub.de"])::after,
+[href^="https"]:not([href*="bdclub.de"])::after {
+  content: '(external link)';
+  display: inline-block;
+  width: .7em;
+  height: .7em;
+  text-indent: .7em;
+  white-space: nowrap;
+  overflow: hidden;
+  background-image: url(../images/external.svg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
+  margin-left: .1em;
+}
+
+div#frame {
+	background-color: #202020;
+	position: relative;
+	width: 100%;
+	max-width: 1080px;
+	margin: 0 auto;
+}
+div#topbg {
+	background-color: #333;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: -1;
+	width: 100%;
+	height: 143px;
+}
+div#main {
+	position: relative;
+	padding: 20px 0px;
+	margin: 0px 20px;
+}
+div#header {
+	color: #ffffff;
+	background-color: #d85c5f;
+	background-image: url("../images/corona.jpg");
+	background-repeat: no-repeat;
+	/*background-attachment: fixed;*/
+	background-position: center; 
+	padding: 10px;
+	height: 123px;
+}
+div#content {
+	padding: 10px;
+	background-color: #202020;
+	color: rgba(255, 255, 255, 0.5);
+}
+div#menu,
+div#footer {
+	padding: 10px;
+	background-color: #550000;
+	color: #fff;
+	border-top: 1px solid;
+	border-bottom: 1px solid;
+	border-color: #d46a6a;
+	margin: 10px 0px 0px;
+	text-align: center;
+}
+form#regform #warning {
+	background-color: #600;
+	text-align: center;
+	padding: 5px;
+	margin: 5px;
+	color: #f00;
+	font-weight: bold;
+	border: 2px solid #f00;
+}
+
+form#regform #warning a{
+	color: #f00;
+	}
+form#userform > label,
+form#regform > label {
+	display: block;
+	margin: 10px 0px;
+}
+form#regform > input,
+form#regform > textarea {
+	max-width: 500px;
+	width: 100%;
+	display: block;
+}
+form #regsubmit {
+	padding: 5px;
+	border-radius: 10px;
+	font-size: 30pt;
+	color: #ffffff;
+	background-color: #550000;
+	border: 1px solid #d46a6a;
+	cursor: pointer;
+}
+form #regsubmit:hover,
+form #regsubmit:focus {
+	background-color: #d46a6a;
+	border: 1px solid #550000;
+	color: #550000;
+}
+.qrcode {
+	width: 100%;
+}
+#explanation p {
+	border-bottom: 1px solid #d46a6a;
+	padding-bottom: 5px;
+}
+div.checkbox {
+	margin-top: 20px;
+	top: 0px;
+	bottom: 0px;
+}
+div.checkbox label {
+   padding-left:20px;
+   display:block;
+}
+
+div.checkbox label input {
+   margin-left:-20px;
+   display:block;
+   float: left;
+}
+
+#signin .label {
+	width: 80px;
+	display: inline-block;
+}
+
+#info {
+	text-align: center;
+	padding: 5px;
+	margin: 5px;
+	font-weight: bold;
+}
+
+#info.error{
+	background-color: #600;
+	color: #f00;
+	border: 2px solid #f00;
+}
+
+#info.success {
+	background-color: #060;
+	color: #0f0;
+	border: 2px solid #0f0;	
+}
+
+#guesttable {
+	width: 100%;
+	max-width: 100%;
+}

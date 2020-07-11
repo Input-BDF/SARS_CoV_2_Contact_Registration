@@ -1,0 +1,18 @@
+{% extends "main.html" %}
+{% block body %}
+    <h3>Anmeldung</h3>
+    <div>
+      {% for error in errors %}
+      <div class="ui-state-error ui-corner-all validate">
+        <p>{{ error }}</p>
+      </div>
+      {% endfor %}
+      <form id="signin" action="{{ url_for('r_signin') }}" method="POST">
+        <div class="form">
+          <p><span class="label">Nutzername</span><input type="text" name="username" value="" /></p>
+          <p><span class="label">Passwort</span><input type="password" name="password" value="" /></p>
+          <p><span class="label">&nbsp;</span><input class="submit" type="submit" name="signin" value="Anmelden" /></p>
+        </div>
+      </form>
+    </div>
+{% endblock %}

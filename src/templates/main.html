@@ -1,0 +1,46 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="shortcut icon" href="{{ url_for('static', filename='images/ilsc_32x32.png') }}" type="image/png">
+		<title>ILSC e.V. Checkin</title>
+		<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" type="text/css" media="screen" />
+		{% if request.endpoint == 'r_getqr' %}
+			<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}" type="text/css" media="print" >
+		{% endif %}
+	</head>	
+	<body>
+		<div id="frame">
+		<div id="topbg"></div>
+			<div id="main">
+				<div id="header">
+					<h1>ILSC e.V. Checkin</h1>
+				</div>
+				{% if is_admin %}
+					<div id="menu">
+						<span class="bio">&#9763;</span>
+						<a href="{{ url_for('r_scanning') }}">Scan</a>
+						<span class="bio">&#9763;</span>
+						<a href="{{ url_for('r_users') }}">User</a>
+						<span class="bio">&#9763;</span>
+						<a href="{{ url_for('r_guests') }}">G&auml;ste</a>
+						<span class="bio">&#9763;</span>
+						<a href="{{ url_for('r_signout') }}">Logout</a>
+						<span class="bio">&#9763;</span>
+					</div>
+				{% endif %}
+				<div id="content">
+					{% block body %}{% endblock %}
+				</div>
+				<div id="footer">
+					<span class="bio">&#9763;</span>
+					<a href="{{url_for('r_imprint')}}">Impressum</a>
+					<span class="bio">&#9763;</span>
+					<a href="{{url_for('r_gprd')}}">Datenschutz</a>
+					<span class="bio">&#9763;</span>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,38 @@
+[app]
+static_folder = ./static
+template_folder = ./templates
+contactmail = <enteryourmailhere>
+#Keep data for given days
+keepdays = 28
+#run autocheckout at hour of day
+autocheckout = 22
+#komma separated list of devisions; used when there are multiple locations
+devisions = Biergarten,bc,café,bd,bh,bi
+imprint = default_imprint.html
+gprd = default_gprd.html
+
+[http]
+usessl = True
+#domain jused to access web app
+address = 127.0.0.1
+port = 8443
+#certificate keys for ssl conectivity
+servercacert = ./keys/cacert.pem
+serverpriv = ./keys/privkey.pem
+
+[websocket]
+#domain jused to access websocket; should be the same as for your web app
+address = 127.0.0.1
+port = 8445
+
+[database]
+#Database file location
+path = sqlite:///ilsc.db
+#location of key files for database entry en-/decryption, will be generated if not present
+pubkey = ./keys/public_key.pub
+privkey = ./keys/private_key.ppk
+
+[log]
+base = ./
+file = ilsc.log
+level = INFO

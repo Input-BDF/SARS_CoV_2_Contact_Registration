@@ -1,0 +1,63 @@
+<html>
+	<head>
+		<title>ILSC Contact Registration - Scanner</title>
+		<meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="shortcut icon" href="{{ url_for('static', filename='images/ilsc_32x32.png') }}" type="image/png">
+		<link rel="stylesheet" href="{{ url_for('static', filename='js/instascan/style.css') }}">
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/3.3.3/adapter.min.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.1.10/vue.min.js"></script>
+		<script type="text/javascript" src="{{ url_for('static', filename='js/instascan/instascan.min.js') }}"></script>
+	</head>
+	<body>
+		<div id="app">
+			<div class="preview-container">
+				<video id="preview"></video>
+			</div>
+			<div class="sidebar">
+				<section class="cameras">
+					<h2>Cameras</h2><button id="show_cams"></button>
+					<div class="links">
+						<span>{{ devision|safe }}: </span><span id="check_count">{{ count }} </span><span class="bio">&#9763;</span>
+						{% if is_admin %}
+						<a href="{{ url_for('r_users') }}">Backend</a>
+						<span class="bio">&#9763;</span>
+						{% endif %}
+						<a href="{{ url_for('r_signout') }}">Logout</a>
+					</div>
+					<ul id="camlist">
+						<li v-if="cameras.length === 0" class="empty">No cameras found</li>
+						<li v-for="camera in cameras">
+							<span v-if="camera.id == activeCameraId" :title="formatName(camera.name)" class="active">{{'{{'}} formatName(camera.name) {{'}}'}}</span>
+							<span v-if="camera.id != activeCameraId" :title="formatName(camera.name)">
+								<a @click.stop="selectCamera(camera)">{{'{{'}} formatName(camera.name) {{'}}'}}</a>
+							</span>
+						</li>
+					</ul>
+				</section>
+			</div>
+			<div class="sidebar bottom">
+				<section class="scans">
+					<h2>Scans</h2>
+					<ul v-if="scans.length === 0">
+						<li class="empty">No scans yet</li>
+					</ul>
+					<transition-group name="scans" tag="ul">
+						<li v-for="scan in scans" :key="scan.date" :title="scan.content">{{'{{'}} scan.content {{'}}'}}</li>
+					</transition-group>
+				</section>
+				<div class="buttons">
+					<button id="checkin">Checkin</button>
+					<button id="checkout">Checkout</button>
+				</div>
+			</div>
+			<div id="scanmsg" class="valid">Successfully checked in</div>
+		</div>
+		<script type="text/javascript">var wsconfig = {{ wsocket|tojson|safe }};</script>
+		<script type="text/javascript">var devision_id = {{ devision_id|safe }};</script>
+		<script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+		<script type="text/javascript" src="{{ url_for('static', filename='js/waitMe.min.js') }}"></script>
+
+		<script type="text/javascript" src="{{ url_for('static', filename='js/instascan/app.js') }}"></script>
+	</body>
+</html>

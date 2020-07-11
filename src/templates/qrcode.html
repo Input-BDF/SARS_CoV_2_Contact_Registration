@@ -1,0 +1,22 @@
+{% extends "main.html" %}
+
+{% block body %}
+{% if info: %}
+	<div id="explanation">
+		<h2>Und jetzt?</h2>
+		<p>Erstelle einen Screenshot und bewahre ihn auf deinem Handy auf. Alternativ kannst du auch den QR-Code als Bild speichern.</p>
+		<p>Wenn du den QR-Code auf dem PC erstellt hast, drucke <a href="{{ url_for('r_getqr', guid=guid) }}" onclick="window.print();">diese Seite</a> aus</p>
+		<p>Oder kopiere und speichere folgenden Link:<br/><br/>
+		<a href="{{ url_for('r_getqr', guid=guid) }}">https://{{ host }}:{{ port }}{{ url_for('r_getqr', guid=guid) }}</a></p>
+		<p>Wenn du uns besuchst, zeig eines davon unseren verantwortlichen Clubei... et voil&aacute; ... You're in</p>
+		<p>Wenn du gehst, zeige bitte den QR-Code wieder einem verantwortlichem Clubei. Muss leider so &#128532;</p>
+		<p>Party smart und Danke!!! &#128536;</p> 
+	</div>
+{% endif %}
+<div id="qrwrapper"><img class="qrcode" src="{{ url_for('static', filename='codes/{}.png'.format(guid)) }}"/></div>
+{% if info: %}
+<div>
+	<p><a href="/" class="backlink">	&lArr; zur&uuml;ck zum Registrierungsformular</a></p>
+</div>
+{% endif %}
+{% endblock %}

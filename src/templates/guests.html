@@ -1,0 +1,37 @@
+{% extends "main.html" %}
+{% block body %}
+{% if msg: %}
+	{% for t,m in msg.items() %}
+		<div id="info" class="{{ t }}">{{ m|safe }}</div>
+	{% endfor %}
+{% endif %}
+<form action="#" method="post">
+	{{ form.csrf_token }}
+	{{ form.visitdate(class='datepicker') }}
+	<input id="submit" type="submit" value="Anzeigen">
+</form>
+<table id="guesttable">
+<tbody>
+<tr>
+  <th>Nachname</th>
+  <th>Vorname</th>
+  <th>Contact</th>
+  <th>Checkin</th>
+  <th>Checkout</th>
+  <th>Sektion</th>
+</tr>
+{% if guests: %}
+	{% for guest in guests %}
+		<tr>
+		  <td>{{ guest.sname | safe }}</td>
+		  <td>{{ guest.fname | safe }}</td>
+		  <td>{{ guest.contact | safe }}</td>
+		  <td>{{ guest.checkin }}</td>
+		  <td>{{ guest.checkout }}</td>
+		  <td>{{ devisions[guest.devision] }}</td>
+		</tr>
+	{% endfor %}
+{% endif %}
+</tbody>
+</table>
+{% endblock %}

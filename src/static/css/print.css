@@ -1,0 +1,13 @@
+@media print {
+  #footer,
+  .backlink/*,
+  #explanation*/ {
+  display: none!important;
+  }
+  .qrcode {
+  width: 75%;
+  height: auto;
+  max-width:75%!important;
+  display: block;
+  }
+}

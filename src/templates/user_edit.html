@@ -1,0 +1,29 @@
+{% extends "main.html" %}
+
+{% block body %}
+<form id="userform" method="POST" action="{{ url_for('r_user_edit', uid=uid) }}">
+	{% if msg: %}
+	<div id="warning">{{ msg|safe }}</div>
+	{% endif %}
+	{{ form.csrf_token }}
+	{{ form.username.label }}
+	{{ form.username }}
+	{{ form.devision.label }}
+	{{ form.devision }}
+	<div class="checkbox">
+	<label for="{{ form.isadmin.label.field_id }}">
+	{{ form.isadmin(disabled=superuser)}}
+		{{ form.isadmin.label.text|safe }}
+	</label>
+	</div>
+	<ul>
+		{% for key,field in form._fields.items() %}
+			{% for error in field.errors %}
+				<li style="color:red;">{{ error }}</li>
+			{% endfor %}
+		{% endfor %}
+	</ul>
+	<input id="submit" type="submit" value="Speichern">
+	<a href="{{ url_for('r_users') }}"><button type="button" formnovalidate>Abbrechen</button></a>
+</form>
+{% endblock %}

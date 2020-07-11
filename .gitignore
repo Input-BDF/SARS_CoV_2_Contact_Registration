@@ -1,0 +1,12 @@
+/src/static/js/instascan/instascan-master
+/.pydevproject
+/.project
+__pycache__
+/src/ilsc.log
+/src/ilsc.db
+/src/keys/public_key.pem
+/src/keys/private_key.pem
+.idea
+/src/flask.cfg
+/src/ilsc.cfg
+/.settings
