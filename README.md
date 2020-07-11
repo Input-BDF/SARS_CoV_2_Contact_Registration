@@ -5,22 +5,22 @@ A simple web application to collect contact information from visitors during the
 Basic intention is to provide an alternative way to collect visitor data during SARS CoV 2 pandemic. Since regulations force us to collect this data and no mobile phone app should be used we started this approach
 
 ## How it works
-Basicly an customer opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the customer visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the customer can also print this qr code.
-Customer data is stored assymetric (why cause i can) within database and only users with admin permission can read this data
+Basicly an visitor opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
+Visitor data is stored assymetric (why cause i can) within database and only users with admin permission can read this data
 
 ## Requirements
-On customer side ther is only a internet connection needed.
+On visitor side ther is only a internet connection needed.
 To run this application server side Python >= 3.7 is needed. All required modules are listet within requirements.txt.
 
-## Usage Costumer
+## Usage visitor
 1. Open Url
 1. Enter Data
 1. Show qr code to a responsible employee
 
 ## Usage employee
 1. open `[yourdomain]:[port]/signin`
-1. scan customer qr code via web interface at the beginning of the visit (checks in automatically)
-1. scan customer qr code via web interface at the end of the visit (via "checkout" button)
+1. scan visitor qr code via web interface at the beginning of the visit (checks in automatically)
+1. scan visitor qr code via web interface at the end of the visit (via "checkout" button)
 
 ## Supported devices
 Actually every device with an browser. For scanning every mobile device with a camera or pc with a webcam
