@@ -10,3 +10,10 @@ __pycache__
 /src/flask.cfg
 /src/ilsc.cfg
 /.settings
+/src/keys/private_key.ppk
+/src/keys/privkey.pem
+/src/keys/cacert.pem
+/src/keys/public_key.pub
+/src/migrations
+/src/migrate.cfg
+/src/migrate.py
