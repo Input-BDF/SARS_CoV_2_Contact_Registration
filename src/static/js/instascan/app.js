@@ -3,7 +3,6 @@
 	$('#jscript').hide();
 	$('#body').show();
 	$(document).ready(function(){
-		var g_auto_unblock = true;
 		if (!window.WebSocket) alert("WebSocket not supported by this browser");
 		$('#scanmsg').hide();
 		$('#checkout').hide();
