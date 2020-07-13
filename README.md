@@ -6,7 +6,7 @@ Basic intention is to provide an alternative way to collect visitor data during 
 
 ## How it works
 basically a visitor opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
-Visitor data is stored assymetric (why cause i can) within database and only users with admin permission can read this data
+Visitor data is stored assymetric (why? because i can) within database and only users with admin permission can read this data. Visits and visitor data older than the given threshold will be deleted automatically.
 
 ## Requirements
 On visitor side ther is only a internet connection needed.
