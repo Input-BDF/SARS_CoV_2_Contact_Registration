@@ -199,3 +199,7 @@ form#regform{
 #regform>label{
 	font-weight:bold;
 }
+
+#regform input[type=text]{
+	height:22pt;
+}
