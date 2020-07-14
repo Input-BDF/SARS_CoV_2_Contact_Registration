@@ -1,5 +1,6 @@
 body {
 	background-color: #303030;
+	font-family:"Trebuchet MS", Helvetica, sans-serif;
 }
 a,
 a:visited {
@@ -64,7 +65,7 @@ div#header {
 	background-repeat: no-repeat;
 	/*background-attachment: fixed;*/
 	background-position: center; 
-	padding: 10px;
+	padding: 10px 0;
 	height: 123px;
 }
 div#content {
@@ -125,10 +126,12 @@ form #regsubmit:focus {
 .qrcode {
 	width: 100%;
 }
+
 #explanation p {
-	border-bottom: 1px solid #d46a6a;
-	padding-bottom: 5px;
+	padding: 1px 6px;
+	text-align:justify;
 }
+
 div.checkbox {
 	margin-top: 20px;
 	top: 0px;
@@ -146,8 +149,16 @@ div.checkbox label input {
 }
 
 #signin .label {
-	width: 80px;
+	width: 96px;
+	margin-bottom:5px;
+	font-weight:bolder;
 	display: inline-block;
+}
+
+#signin input[type=submit]{
+	padding: 4pt;
+	width:100%;
+	font-weight:bolder;
 }
 
 #info {
@@ -172,4 +183,19 @@ div.checkbox label input {
 #guesttable {
 	width: 100%;
 	max-width: 100%;
+}
+
+#header h1{
+	background-color:rgba(255,255,255,0.8);
+	color:#d46a6a;
+	text-align:center;
+}
+
+form#regform{
+	margin:auto;
+	max-width:425px;
+}
+
+#regform>label{
+	font-weight:bold;
 }
