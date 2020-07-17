@@ -10,28 +10,36 @@
 	{{ form.visitdate(class='datepicker') }}
 	<input id="submit" type="submit" value="Anzeigen">
 </form>
-<table id="guesttable">
-<tbody>
-<tr>
-  <th>Nachname</th>
-  <th>Vorname</th>
-  <th>Contact</th>
-  <th>Checkin</th>
-  <th>Checkout</th>
-  <th>Sektion</th>
-</tr>
-{% if guests: %}
-	{% for guest in guests %}
-		<tr>
-		  <td>{{ guest.sname | safe }}</td>
-		  <td>{{ guest.fname | safe }}</td>
-		  <td>{{ guest.contact | safe }}</td>
-		  <td>{{ guest.checkin }}</td>
-		  <td>{{ guest.checkout }}</td>
-		  <td>{{ devisions[guest.devision] }}</td>
-		</tr>
-	{% endfor %}
-{% endif %}
-</tbody>
-</table>
+<div>
+<div id="guesttable">
+	<div class="header row">
+		<div class="namecol col col-1">
+			<div>Nachname</div>
+			<div>Vorname</div>
+		</div>
+		<div class="col col-2">Kontakt</div>
+		<div class="timecol col col-3">
+			<div>Besuch</div>
+			<div >(in/out)</div>
+		</div>
+		<div class="col col-4">Sektion</div>
+	</div>
+	{% if guests: %}
+		{% for guest in guests %}
+			<div class="guestrow row">
+				<div class="namecol col col-1">
+					<div>{{ guest.sname | safe }}</div>
+					<div>{{ guest.fname | safe }}</div>
+				</div>
+				<div class="col col-2">{{ guest.contact | safe }}</div>
+				<div class="timecol col col-3">
+					<div>{{ guest.checkin }}</div>
+					<div>{{ guest.checkout }}</div>
+				</div>
+				<div class="col col-4">{{ devisions[guest.devision] }}</div>
+			</div>
+		{% endfor %}
+	{% endif %}
+</div>
+</div>
 {% endblock %}
