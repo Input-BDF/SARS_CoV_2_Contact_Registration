@@ -527,8 +527,8 @@ class Backend(object):
             decoded = []
             for _g in guests:
                 fname, sname, contact = self.decrypt_data(_g.fname, _g.sname, _g.contact)
-                start = _g.checkin.strftime("%d.%m.%y - %H:%M:%S") if _g.checkin else ''
-                end = _g.checkout.strftime("%d.%m.%y - %H:%M:%S") if _g.checkout else ''
+                start = _g.checkin.strftime("%d.%m.%y %H:%M:%S") if _g.checkin else ''
+                end = _g.checkout.strftime("%d.%m.%y %H:%M:%S") if _g.checkout else ''
                 devision = _g.devision 
                 decoded.append(decoded_guest(fname.decode('utf-8'),
                                              sname.decode('utf-8'),
