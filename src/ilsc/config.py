@@ -46,6 +46,8 @@ class Config(object):
         self.app['devisions'] = ('Biergarten','bc','café','bd','bh','bi')
         self.app['imprint'] = 'default_imprint.html'
         self.app['gprd'] = 'default_gprd.html'
+        self.app['cleanonstart'] = False
+        self.app['timezone'] = 'Europe/Berlin'
         # Section [http]
         self.http = {}
         self.http['address'] = ''
@@ -97,7 +99,10 @@ class Config(object):
                         pass
             if self.app['devisions'] and isinstance(self.app['devisions'], str):
                 self.app['devisions'] = tuple(self.app['devisions'].split(','))
-
+            if self.app['autocheckout'] and isinstance(self.app['autocheckout'], str):
+                self.app['autocheckout'] = tuple(self.app['autocheckout'].split(','))
+            if self.app['cleanonstart'] and isinstance(self.app['cleanonstart'], str):
+                self.app['cleanonstart'] = self.app['cleanonstart'] in ('True', 'true', '1', 1)
             self.http['usessl'] = True if self.http['usessl'] in ('True','true','1') else False 
 
         except (configparser.ParsingError, configparser.MissingSectionHeaderError) as e:
