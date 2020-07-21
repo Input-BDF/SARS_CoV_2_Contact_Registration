@@ -466,12 +466,13 @@ def cleanup_everything():
     gBackend.clean_obsolete_contacts()
 
 #Background scheduler
-scheduler = BackgroundScheduler({'apscheduler.timezone': 'Europe/Berlin'})
-job = scheduler.add_job(cleanup_everything, 'cron', hour=gConfig.app['autocheckout'], minute=0)
+scheduler = BackgroundScheduler({'apscheduler.timezone': gConfig.app['timezone']}) 
+for h in gConfig.app['autocheckout']:
+    scheduler.add_job(cleanup_everything, 'cron', hour=h, minute=0)
 scheduler.start()
 
-# initialize scheduler with your preferred timezone
-cleanup_everything()
+if gConfig.app['cleanonstart']:
+    cleanup_everything()
 
 
 #gBackend.inject_random_userdata()#just for testing
