@@ -11,35 +11,38 @@
 	<input id="submit" type="submit" value="Anzeigen">
 </form>
 <div>
-<div id="guesttable">
-	<div class="header row">
-		<div class="namecol col col-1">
-			<div>Nachname</div>
-			<div>Vorname</div>
-		</div>
-		<div class="col col-2">Kontakt</div>
-		<div class="timecol col col-3">
-			<div>Besuch</div>
-			<div >(in/out)</div>
-		</div>
-		<div class="col col-4">Sektion</div>
-	</div>
 	{% if guests: %}
-		{% for guest in guests %}
-			<div class="guestrow row">
-				<div class="namecol col col-1">
-					<div>{{ guest.sname | safe }}</div>
-					<div>{{ guest.fname | safe }}</div>
-				</div>
-				<div class="col col-2">{{ guest.contact | safe }}</div>
-				<div class="timecol col col-3">
-					<div>{{ guest.checkin }}</div>
-					<div>{{ guest.checkout }}</div>
-				</div>
-				<div class="col col-4">{{ devisions[guest.devision] }}</div>
-			</div>
-		{% endfor %}
+	<div id="counter">Besucher: {{ guests|length }}</div>
 	{% endif %}
-</div>
+	<div id="guesttable">
+		<div class="header row">
+			<div class="namecol col col-1">
+				<div>Nachname</div>
+				<div>Vorname</div>
+			</div>
+			<div class="col col-2">Kontakt</div>
+			<div class="timecol col col-3">
+				<div>Besuch</div>
+				<div >(in/out)</div>
+			</div>
+			<div class="col col-4">Sektion</div>
+		</div>
+		{% if guests: %}
+			{% for guest in guests %}
+				<div class="guestrow row">
+					<div class="namecol col col-1">
+						<div><a href="{{ url_for('r_visits', guid = guest.guid) }}" target="_blank" title="Alle Besuche anzeigen">&#128197; </a>{{ guest.sname | safe }}</div>
+						<div>{{ guest.fname | safe }}</div>
+					</div>
+					<div class="col col-2">{{ guest.contact | safe }}</div>
+					<div class="timecol col col-3">
+						<div>{{ guest.checkin }}</div>
+						<div>{{ guest.checkout }}</div>
+					</div>
+					<div class="col col-4">{{ devisions[guest.devision] }}</div>
+				</div>
+			{% endfor %}
+		{% endif %}
+	</div>
 </div>
 {% endblock %}

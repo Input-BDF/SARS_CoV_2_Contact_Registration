@@ -7,7 +7,7 @@ Created on 06.06.2020
 
 __all__ = [
     # global objects
-    'gDatabase',
+    'appDatabase',
     # classes
     'User',
     'DBGuest',
@@ -23,17 +23,17 @@ from sqlalchemy_utils import database_exists
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 
-gDatabase = SQLAlchemy()
+appDatabase = SQLAlchemy()
 
-class ILSCMeta(gDatabase.Model):
+class ILSCMeta(appDatabase.Model):
     '''
     metadata
     '''
     __tablename__ = 'meta_data'
     # Columns
-    id = gDatabase.Column(gDatabase.Integer, primary_key=True)
-    version = gDatabase.Column(gDatabase.Text(16))
-    created = gDatabase.Column(gDatabase.DateTime)
+    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
+    version = appDatabase.Column(appDatabase.Text(16))
+    created = appDatabase.Column(appDatabase.DateTime)
     ##
     # Public methods
     ##
@@ -43,21 +43,21 @@ class ILSCMeta(gDatabase.Model):
     def __repr__(self):
         return '<ILSCMeta %r>' % (self.version)
 
-class User(gDatabase.Model, flask_login.UserMixin):
+class User(appDatabase.Model, flask_login.UserMixin):
     '''
     user database
     '''
     __tablename__ = 'user'
     # Columns
-    id = gDatabase.Column(gDatabase.Integer, primary_key=True)
-    userid = gDatabase.Column(gDatabase.String(128))
-    username = gDatabase.Column(gDatabase.String(32), unique=True)
-    devision = gDatabase.Column(gDatabase.Integer, default = 0)
-    isadmin = gDatabase.Column(gDatabase.Boolean, default = False)
-    salt = gDatabase.Column(gDatabase.String(32))
-    password = gDatabase.Column(gDatabase.String(128))
-    created = gDatabase.Column(gDatabase.DateTime)
-    active = gDatabase.Column(gDatabase.Boolean)
+    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
+    userid = appDatabase.Column(appDatabase.String(128))
+    username = appDatabase.Column(appDatabase.String(32), unique=True)
+    devision = appDatabase.Column(appDatabase.Integer, default = 0)
+    isadmin = appDatabase.Column(appDatabase.Boolean, default = False)
+    salt = appDatabase.Column(appDatabase.String(32))
+    password = appDatabase.Column(appDatabase.String(128))
+    created = appDatabase.Column(appDatabase.DateTime)
+    active = appDatabase.Column(appDatabase.Boolean)
     ##
     # Public methods
     ##
@@ -99,20 +99,20 @@ class User(gDatabase.Model, flask_login.UserMixin):
     def __hash(string, salt):
         return hashlib.sha512(string + salt).hexdigest()
 
-class DBGuest(gDatabase.Model):
+class DBGuest(appDatabase.Model):
     '''
     guest database
     '''
     __tablename__ = 'tbl_guests'
     __usage__ = 'DBGuest'
     # Columns
-    id = gDatabase.Column(gDatabase.Integer, primary_key=True)
-    created = gDatabase.Column(gDatabase.DateTime, default=datetime.now)#, onupdate=datetime.now)
-    fname = gDatabase.Column(gDatabase.LargeBinary)
-    sname = gDatabase.Column(gDatabase.LargeBinary)
-    contact = gDatabase.Column(gDatabase.LargeBinary)
-    guid = gDatabase.Column(gDatabase.VARCHAR(255))
-    agreed = gDatabase.Column(gDatabase.Boolean())
+    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
+    created = appDatabase.Column(appDatabase.DateTime, default=datetime.now)#, onupdate=datetime.now)
+    fname = appDatabase.Column(appDatabase.LargeBinary)
+    sname = appDatabase.Column(appDatabase.LargeBinary)
+    contact = appDatabase.Column(appDatabase.LargeBinary)
+    guid = appDatabase.Column(appDatabase.VARCHAR(255))
+    agreed = appDatabase.Column(appDatabase.Boolean())
     ##
     # Public methods
     ##
@@ -141,18 +141,18 @@ class DBGuest(gDatabase.Model):
     def entitytype(self):
         return __name__
 
-class DBCheckin(gDatabase.Model):
+class DBCheckin(appDatabase.Model):
     '''
     checkin/out datatable
     '''
     __tablename__ = 'tbl_checkins'
     __usage__ = 'DBCheckins'
     # Columns
-    id = gDatabase.Column(gDatabase.Integer, primary_key=True)
-    guid = gDatabase.Column(gDatabase.VARCHAR(255))
-    checkin = gDatabase.Column(gDatabase.DateTime, default=datetime.now)
-    checkout = gDatabase.Column(gDatabase.DateTime, default=None )
-    devision = gDatabase.Column(gDatabase.Integer, default=0)
+    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
+    guid = appDatabase.Column(appDatabase.VARCHAR(255))
+    checkin = appDatabase.Column(appDatabase.DateTime, default=datetime.now)
+    checkout = appDatabase.Column(appDatabase.DateTime, default=None )
+    devision = appDatabase.Column(appDatabase.Integer, default=0)
     ##
     # Public methods
     ##
@@ -199,21 +199,21 @@ def init_database():
     initialize database and primary user
     '''
     try:
-        gDatabase.drop_all()
-        gDatabase.create_all()
+        appDatabase.drop_all()
+        appDatabase.create_all()
     
         # add meta
         meta = ILSCMeta()
-        gDatabase.session.add(meta)
-        gDatabase.session.commit()
+        appDatabase.session.add(meta)
+        appDatabase.session.commit()
 
         dauser = User(username='admin',
                         password='admin',
                         devision = 0,
                         isadmin = True,
                         do_hash=True)
-        gDatabase.session.add(dauser)
-        gDatabase.session.commit()
+        appDatabase.session.add(dauser)
+        appDatabase.session.commit()
 
     except Exception as e:
         print(e)

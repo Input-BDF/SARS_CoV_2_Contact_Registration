@@ -21,15 +21,13 @@ CommandLine.add_argument('--flask-config', type=str, action='store', help='Speci
 CommandLine.add_argument('--static-folder', type=str, action='store', help='Specify path to the flask static folder')
 CommandLine.add_argument('--template-folder', type=str, action='store', help='Specify path to the flask template folder')
 CommandLine.add_argument('-d', '--database', type=str, action='store', help='Specify database uri')
-CommandLine.add_argument('--channels', type=str, action='store', nargs='*', help='Specify path(s) to channels.conf file(s)')
 CommandLine.add_argument('--log-level', type=str, action='store', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], help='Set log level')
 CommandLine.add_argument('--log-file', type=str, action='store', help='Set log file')
 
-"""
-class: Config
-brief: Reads configuration file
-"""
 class Config(object):
+    '''
+    main configuration class
+    '''
     # Private attributes
     MULTIPLE_VALUE_DELIMITER = ','
     # Public methods
@@ -66,8 +64,7 @@ class Config(object):
         self.database['privkey'] = ''
         # Section [log]
         self.log = {}
-        self.log['base'] = '/tmp'
-        self.log['file'] = ''
+        self.log['file'] = './ilsc.log'
         self.log['level'] = 'INFO'
 
         # All sections
@@ -80,11 +77,11 @@ class Config(object):
         ]
         # Parsed files
         self.files = []
-    """
-    method:    read
-    brief:    Reads a configuration file
-    """
+
     def read(self, filename):
+        '''
+        Reads configuration file
+        '''
         try:
             self.parser = configparser.ConfigParser(allow_no_value=True)
             self.files = self.parser.read(filename, 'utf-8')
@@ -110,6 +107,10 @@ class Config(object):
             raise IOError('failed to parse a configuration file')
     
     def write(self, section, data):
+        '''
+        writes configuration file
+        '''
+        #TODO: check if really needed and if everything works
         if not self.files:
             raise IOError('failed to read a configuration file')
         if not self.parser:
@@ -125,12 +126,11 @@ class Config(object):
             return True
         except:
             return False
-        
-    """
-    method:    __repr__
-    brief:    Returns a string representation of a Config object
-    """
+
     def __repr__(self):
+        '''
+        Returns a string representation of a Config object
+        '''
         s = 'from <%s>\n' % ('; '.join(self.files))
         for section in self.sections:
             s += '[%s]\n' % (section)
@@ -141,11 +141,12 @@ class Config(object):
                 print(a)
                 pass
         return s
-    """
-    method:    __repr__
-    brief:    Returns a string representation of a Config object
-    """
+
+
     def dict(self):
+        '''
+        return configuration as dictionary
+        '''
         d = {}
         for section in self.sections:
             d[section] = {}
@@ -160,7 +161,7 @@ class Config(object):
 ##
 # Test Entry Point
 ##
-
+'''
 import sys
 
 def main():
@@ -174,3 +175,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''

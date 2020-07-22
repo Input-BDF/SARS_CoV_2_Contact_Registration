@@ -51,11 +51,23 @@ def clean_strings(string):
     except Exception as e:
         print('Clean_Strings', e)
 
+class visit():
+    '''
+    class for better guest returning
+    '''
+    def __init__(self, guid, checkin, checkout, day, devision):
+        self.guid = guid
+        self.checkin = checkin
+        self.checkout = checkout
+        self.devision = devision
+        self.day = day
+
 class decoded_guest():
     '''
     class for better guest returning
     '''
-    def __init__(self, fname, sname, contact, checkin, checkout, devision):
+    def __init__(self, guid, fname, sname, contact, checkin, checkout, devision):
+        self.guid = guid
         self.fname = fname
         self.sname = sname
         self.contact = contact
@@ -65,15 +77,14 @@ class decoded_guest():
 
 class Backend(object):
     '''Backend class'''
-    def __init__(self, config, gApp, gDatabase, superuser):
-        """
-        method:    __init__
-        brief:    Constructs a Backend object
-        """
+    def __init__(self, config, flaskApp, appDatabase, superuser):
+        '''
+        Constructs a Backend object
+        '''
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.gDatabase = gDatabase
-        self.gApp = gApp
+        self.appDatabase = appDatabase
+        self.flaskApp = flaskApp
         self.websocket = None
         self.superuser = superuser
         self.init_websocket()
@@ -82,13 +93,13 @@ class Backend(object):
         '''
         Query Database an checkout all
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 _guests = DBCheckin.query.filter_by(checkout=None).order_by(DBCheckin.checkin.desc()).all()
 
                 for _guest in _guests:
                     _guest.checkout=datetime.now()
-                self.gDatabase.session.commit()
+                self.appDatabase.session.commit()
                 self.logger.debug(f'Checked {len(_guests)} entries out')
                 return True, 'Checkout erfolgreich'
             except Exception as e:
@@ -99,14 +110,14 @@ class Backend(object):
         '''
         Query Database for obsolete checkin entries and delete
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 days = int(self.config.app['keepdays'])
                 _query = DBCheckin.query.filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
                 old_checkins = _query.all()
                 for checkin in old_checkins:
-                    self.gDatabase.session.delete(checkin)
-                self.gDatabase.session.commit()
+                    self.appDatabase.session.delete(checkin)
+                self.appDatabase.session.commit()
                 self.logger.debug(f'Deleted {len(old_checkins)} entries from checkins')
                 return True, 'Löschen erfolgrreich erfolgreich'
             except Exception as e:
@@ -117,7 +128,7 @@ class Backend(object):
         '''
         clean obsolete contact data from database
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 active = []
                 active_checkins = DBCheckin.query.all()
@@ -130,8 +141,8 @@ class Backend(object):
                 codes = []
                 for r in remove_guests:
                     codes.append(r.guid)
-                    self.gDatabase.session.delete(r)
-                self.gDatabase.session.commit()
+                    self.appDatabase.session.delete(r)
+                self.appDatabase.session.commit()
                 if len(codes):
                     self.delete_qr_codes(codes)
                 self.logger.debug(f'Deleted {len(remove_guests)} entries from contacts')
@@ -154,7 +165,7 @@ class Backend(object):
         '''
         get all checkin guids
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 _guests = DBCheckin.query.all()
                 _guids = [] 
@@ -165,10 +176,9 @@ class Backend(object):
                 self.logger.debug(e)
 
     def init_websocket(self):
-        """
-        method:    init_channels
-        brief:    Initializes websocket
-        """
+        '''
+        Initializes websocket
+        '''
         try:
             address = u"wss://{0}:{1}".format(self.config.websocket['address'], self.config.websocket['port'])
         except:
@@ -179,36 +189,31 @@ class Backend(object):
                                          bck_end_connection_lost=self._ws_connection_lost,)
 
     def get_websocket(self):
-        """
-        method:    get_websocket
-        brief:    Returns websocket
-        """
+        '''
+        get_websocket
+        Returns websocket
+        '''
         # just return websocket
         return self.websocket
     
     def get_websocket_site(self):
-        """
-        method:    get_websocket
-        brief:    Returns websocket
-        """
+        '''
+        Returns websocket site
+        '''
         try:
-            #root = File(".")
             root = Resource() #use Resource() else file system gets visible
             resource = WebSocketResource(self.websocket)
-            # websockets resource on "/ws" path
-            #root.putChild(b"ws", resource)
             root.putChild(b"", resource)
             site = Site(root)
-            # just return websocket
+            # just return websocket site
         except Exception as e:
             print(e)
         return site
     
     def _ws_data_callback(self, data, isBinary):
-        """
-        method:    _ws_data_callback
-        brief:    Websocket data callback
-        """
+        '''
+        Websocket data callback, base backend communication center
+        '''
         try:
             _data = json.loads(data.decode('utf-8'))
             #self.logger.debug(_data)
@@ -239,26 +244,23 @@ class Backend(object):
             self.logger.error(e)
     
     def _ws_send_callback(self, data):
-        """
-        method:    _ws_send_made
-        brief:    Callback function sending Websocket data
-        """
+        '''
+        Callback function sending Websocket data
+        '''
         self.websocket.send(json.dumps(data))
         pass
     
     def _ws_connection_made(self):
-        """
-        method:    _ws_connection_made
-        brief:    Websocket connection made callback
-        """
+        '''
+        Websocket connection made callback
+        '''
         self._broadcast(json.dumps({'CLIENTS' : str(len(self.websocket.clients))}))
         pass
 
     def _ws_connection_lost(self, reason):
-        """
-        method:    _ws_connection_lost
-        brief:    Websocket connection lost callback
-        """
+        '''
+        Websocket connection lost callback
+        '''
         self._broadcast(json.dumps({'CLIENTS' : str(len(self.websocket.clients))}))
         pass
 
@@ -274,14 +276,14 @@ class Backend(object):
         entity: table-entity
         eid: tables primary key value
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 _entity = entity.query.filter_by(id=eid).first()
                 if not _entity:
                     return False
                 else:
-                    self.gDatabase.session.delete(_entity)
-                    self.gDatabase.session.commit()
+                    self.appDatabase.session.delete(_entity)
+                    self.appDatabase.session.commit()
                     return True
             except Exception as e:
                 self.logger.debug(e)
@@ -301,7 +303,7 @@ class Backend(object):
         '''
         Query Database if guid exists
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 c_str = clean_strings(guid)
                 _guest = DBGuest.query.filter_by(guid=c_str).all()
@@ -316,7 +318,7 @@ class Backend(object):
         '''
         Query Database if guid exists in checkin
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 c_str = clean_strings(guid)
                 lookup = and_(DBCheckin.guid==c_str,
@@ -346,10 +348,10 @@ class Backend(object):
             guid = clean_strings(guid)#.decode('utf-8')
             if not self.check_guid(guid):
                 if (guid != '' and fname != '' and sname != '' and contact != ''):
-                    with self.gApp.app_context():
+                    with self.flaskApp.app_context():
                         new_guest = DBGuest(fname = fname, sname = sname, contact = contact, guid = guid, agreed = agreed)
-                        self.gDatabase.session.add(new_guest)
-                        self.gDatabase.session.commit()
+                        self.appDatabase.session.add(new_guest)
+                        self.appDatabase.session.commit()
                     return True, ''
                 else: return False, 'Es fehlen Werte im Formular.'
             else: return False, 'So ein Zufall. Die GUID existiert bereits. Versuchs bitte nochmal.'
@@ -366,10 +368,10 @@ class Backend(object):
         try:
             guid = clean_strings(guid)
             if (not self.check_guid_today(guid, devision)) and (self.check_guid(guid)):
-                    with self.gApp.app_context():
+                    with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid, devision = devision)
-                        self.gDatabase.session.add(new_guest)
-                        self.gDatabase.session.commit()
+                        self.appDatabase.session.add(new_guest)
+                        self.appDatabase.session.commit()
                     return True, 'Checkin erfolgreich'
             else: return False, 'Fehler beim Checkin'
         except Exception as e:
@@ -380,7 +382,7 @@ class Backend(object):
         '''
         Query Database if guid exists in checkin and update @ checkout time
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 c_str = clean_strings(guid)
                 days = int(self.config.app['keepdays'])
@@ -392,7 +394,7 @@ class Backend(object):
                 _guest = _query.first()
                 if _guest:
                     _guest.checkout=datetime.now()
-                    self.gDatabase.session.commit()
+                    self.appDatabase.session.commit()
                     return True, 'Checkout erfolgreich'
                 else:
                     return False, 'Da gabs nix für nen checkout.'
@@ -404,15 +406,15 @@ class Backend(object):
         '''
         Query Database if guid exists in checkin and update @ checkout time
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 user = User.query.filter_by(id=int(uid)).first()
                 user.username = clean_strings(form.username.data).decode('utf-8')
                 user.devision = int(form.devision.data)
                 #keep superuser the superuser
                 user.isadmin = True if int(uid) == self.superuser else form.isadmin.data
-                if self.gDatabase.session.is_modified(user):
-                    self.gDatabase.session.commit()
+                if self.appDatabase.session.is_modified(user):
+                    self.appDatabase.session.commit()
                     return True, f'"{user.username}" erfolgreich geändert'
                 return True, f'Für "{user.username}" hat sich nichts geändert.'
             except Exception as e:
@@ -423,12 +425,12 @@ class Backend(object):
         '''
         Query Database if guid exists in checkin and update @ checkout time
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 user = User.query.filter_by(id=int(uid)).first()
                 user.set_password(form.password.data, do_hash=True)
-                if self.gDatabase.session.is_modified(user):
-                    self.gDatabase.session.commit()
+                if self.appDatabase.session.is_modified(user):
+                    self.appDatabase.session.commit()
                     return True, f'"{user.username}" erfolgreich geändert'
                 return True, f'Für "{user.username}" hat sich nichts geändert.'
             except Exception as e:
@@ -439,7 +441,7 @@ class Backend(object):
         '''
         Query Database for user based on guid
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 user = User.query.filter_by(id=int(uid)).first()
                 if user:
@@ -451,21 +453,34 @@ class Backend(object):
                 return None
 
     def add_user(self, username, password, devision, isadmin=False, do_hash=True):
+        '''
+        add user to database
+        '''
         try:
-            with self.gApp.app_context():
+            with self.flaskApp.app_context():
                 new_user = User(username, password, devision, isadmin=isadmin, do_hash=do_hash)
-                self.gDatabase.session.add(new_user)
-                self.gDatabase.session.commit()
+                self.appDatabase.session.add(new_user)
+                self.appDatabase.session.commit()
             return True, ''
         except Exception as e:
             self.logger.debug(e)
             return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
 
+    def delete_user(self, _userid):
+        '''
+        Delete user from db
+        '''
+        with self.flaskApp.app_context():
+            user = User.query.filter_by(id=int(_userid)).first()
+            if user:
+                self.appDatabase.session.delete(user)
+                self.appDatabase.session.commit()
+
     def check_admin(self, uid):
         '''
         Query Database for user based on guid
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 user = User.query.filter_by(userid=str(uid)).first()
                 if user:
@@ -480,7 +495,7 @@ class Backend(object):
         '''
         Query Database for user based on guid
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 user = User.query.filter_by(userid=str(uid)).first()
                 if user:
@@ -495,7 +510,7 @@ class Backend(object):
         '''
         Query Database for guests based on date
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 guestuid = DBGuest.guid.label("guestuid")
                 fname = DBGuest.fname.label("fname")
@@ -507,15 +522,15 @@ class Backend(object):
 
                 start = date.strftime("%Y-%m-%d")
                 end = (date+timedelta(days=1)).strftime("%Y-%m-%d")
-                _query = self.gDatabase.session.query(fname, sname, contact, checkin, checkout, devision)\
+                _query = self.appDatabase.session.query(guestuid, fname, sname, contact, checkin, checkout, devision)\
                                                .filter(and_(guestuid == DBCheckin.guid,
                                                             between(checkin, start, end)
                                                             ))\
                                                .order_by(checkin)
-                _guests = _query.all()
+                guests = _query.all()
 
-                if _guests:
-                    return self.decode_guests(_guests)
+                if guests:
+                    return self.decode_guests(guests)
                 else:
                     return None
             except Exception as e:
@@ -523,19 +538,24 @@ class Backend(object):
                 return None
 
     def decode_guests(self, guests):
+        '''
+        decode guest data
+        '''
         try:
             decoded = []
             for _g in guests:
-                fname, sname, contact = self.decrypt_data(_g.fname, _g.sname, _g.contact)
-                start = _g.checkin.strftime("%d.%m.%y %H:%M:%S") if _g.checkin else ''
-                end = _g.checkout.strftime("%d.%m.%y %H:%M:%S") if _g.checkout else ''
-                devision = _g.devision 
-                decoded.append(decoded_guest(fname.decode('utf-8'),
-                                             sname.decode('utf-8'),
-                                             contact.decode('utf-8'),
-                                             start,
-                                             end,
-                                             devision
+                _guid = _g.guestuid
+                _fname, _sname, _contact = self.decrypt_data(_g.fname, _g.sname, _g.contact)
+                _start = _g.checkin.strftime("%d.%m.%y %H:%M:%S") if _g.checkin else ''
+                _end = _g.checkout.strftime("%d.%m.%y %H:%M:%S") if _g.checkout else ''
+                _devision = _g.devision 
+                decoded.append(decoded_guest(_guid,
+                                             _fname.decode('utf-8'),
+                                             _sname.decode('utf-8'),
+                                             _contact.decode('utf-8'),
+                                             _start,
+                                             _end,
+                                             _devision
                                              )
                                 )
             return decoded
@@ -547,7 +567,7 @@ class Backend(object):
         '''
         Query Database for single guest data based on guid
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
                 c_str = clean_strings(guid)#.encode('utf-8')#.encode('ascii', 'xmlcharrefreplace').strip()
                 _guest = DBGuest.query.filter_by(guid=c_str).first()
@@ -568,18 +588,58 @@ class Backend(object):
         '''
         retrieve guest counter from db by devision
         '''
-        with self.gApp.app_context():
+        with self.flaskApp.app_context():
             try:
-                lookup = and_(DBCheckin.checkin+timedelta(days=1) < datetime.now(),
+                _lookup = and_(DBCheckin.checkin+timedelta(days=1) < datetime.now(),
                               DBCheckin.checkout == None,
                               DBCheckin.devision == devision)
-                _query = DBCheckin.query.filter(lookup).order_by(DBCheckin.checkin.desc())
+                _query = DBCheckin.query.filter(_lookup).order_by(DBCheckin.checkin.desc())
                 _guests = _query.all()
                 return len(_guests)
             except Exception as e:
                 self.logger.debug(e)
                 return 0
 
+    def fetch_visits(self,guid):
+        '''
+        Query Database for guest visits
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _guestuid = DBCheckin.guid.label("guestuid")
+                _checkin = DBCheckin.checkin.label("checkin")
+                _checkout = DBCheckin.checkout.label("checkout")
+                _devision = DBCheckin.devision.label("devision")
+
+                _query = self.appDatabase.session.query(_guestuid, _checkin, _checkout, _devision)\
+                                               .filter(_guestuid == guid.encode('utf-8'))\
+                                               .order_by(_checkin)
+                visits = _query.all()
+
+                if visits:
+                    return self.format_visits(visits)
+                else:
+                    return None
+            except Exception as e:
+                self.logger.debug(e)
+                return None
+
+    def format_visits(self, visits):
+        '''
+        decode guest data
+        '''
+        try:
+            f_visits = []
+            for _v in visits:
+                _checkin = _v.checkin.strftime("%d.%m.%y %H:%M:%S") if _v.checkin else ''
+                _checkout = _v.checkout.strftime("%d.%m.%y %H:%M:%S") if _v.checkout else ''
+                _day = _v.checkin.strftime("%Y-%m-%d") if _v.checkin else ''
+                f_visits.append(visit(_v.guestuid, _checkin, _checkout, _day, _v.devision))
+                
+            return f_visits
+        except Exception as e:
+            self.logger.debug(e)
+            return None
 
     def encrypt_data(self, fname, sname, contact):
         '''
@@ -629,10 +689,10 @@ class Backend(object):
             fname, sname, contact = self.encrypt_data(fname, sname, contact)
 
             if not self.check_guid(guid):
-                with self.gApp.app_context():
+                with self.flaskApp.app_context():
                     new_guest = DBGuest(fname = fname, sname = sname, contact = contact, guid = guid, agreed = agreed)
-                    self.gDatabase.session.add(new_guest)
-                    self.gDatabase.session.commit()
+                    self.appDatabase.session.add(new_guest)
+                    self.appDatabase.session.commit()
                 self.test_guest_checkin(guid)
             else: 
                 print('So ein Zufall. Die GUID existiert bereits. Versuchs bitte nochmal.')
@@ -646,10 +706,10 @@ class Backend(object):
         try:
             guid = clean_strings(guid)
             if (not self.check_guid_today(guid, 0)) and (not self.check_guid(guid)):
-                    with self.gApp.app_context():
+                    with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid)
-                        self.gDatabase.session.add(new_guest)
-                        self.gDatabase.session.commit()
+                        self.appDatabase.session.add(new_guest)
+                        self.appDatabase.session.commit()
                     return True, 'Checkin erfolgreich'
             else: return False, 'Fehler beim Checkin'
         except Exception as e:
