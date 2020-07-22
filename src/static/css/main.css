@@ -23,6 +23,14 @@ table th {
 	text-align: left;
 }
 
+button {
+	cursor: pointer;
+}
+
+[type="submit"] {
+	cursor: pointer;
+}
+
 [href^="http"]:not([href*="bdclub.de"])::after,
 [href^="https"]:not([href*="bdclub.de"])::after {
 	content: '(external link)';
@@ -215,7 +223,10 @@ form#regform {
 #regform input[type=text] {
 	height:22pt;
 }
-
+#counter {
+	margin-top: 0.7em;
+}
+#visittable,
 #guesttable {
 	width: 100%;
 	max-width: 100%;
@@ -225,22 +236,26 @@ form#regform {
 	table-layout: fixed;
 }
 
+#visittable .header > div,
 #guesttable .header > div {
 	vertical-align: bottom;
 	background-color: #333;
 	font-weight: bolder;
 }
 
+#visittable .row,
 #guesttable .row {
 	display: table-row;
 	font-size: 0.8em;
 }
 
+#visittable .row > div,
 #guesttable .row > div {
 	display: table-cell;
 	padding: 0 0.22em;
 }
 
+#visittable .row:nth-child(odd),
 #guesttable .row:nth-child(odd) {
 	background-color: #333;
 }
@@ -257,23 +272,37 @@ form#regform {
 	overflow: hidden;
 	/*white-space: nowrap;*/
 	text-overflow: ellipsis;
+}
 
+#visittable .col-1 {
+	text-align:center;
+	width: 10%;
+	min-width: 50px;
+}
+
+#visittable .col-2 {
+	width: 65%;
+}
+#visittable .col-3 {
+	width: 25%;
 }
 
 #guesttable .namecol > div,
-#guesttable .timecol > div{
+#guesttable .timecol > div,
+#visittable .timecol > div {
 	display: inline-block;
 	position: relative;
 }
-
+#visittable .visittrow > div,
 #guesttable .guestrow > div {
 vertical-align: top;
 }
-
+#visittable .visittrow .timecol > div,
 #guesttable .guestrow .timecol > div {
 	margin-left: 1em;
 }
-
+#visittable .visittrow .timecol > div:first-child::before,
+#visittable .visittrow .timecol > div:last-child::before,
 #guesttable .guestrow .timecol > div:first-child::before,
 #guesttable .guestrow .timecol > div:last-child::before {
 	display: inline-block;
@@ -290,13 +319,34 @@ vertical-align: top;
 	left: -1em;
 	top: 0;
 }
-
+#visittable .visittrow .timecol > div:first-child::before,
 #guesttable .guestrow .timecol > div:first-child::before {
 	content: '(checkin)';
 	background-image: url(../images/checkin.svg);
 }
-
+#visittable .visittrow .timecol > div:last-child::before,
 #guesttable .guestrow .timecol > div:last-child::before {
 	content: '(checkout)';
 	background-image: url(../images/checkout.svg);
+}
+
+#visittable .actions {
+	position: relative;
+}
+
+#visittable .col-1 [type="text"] {
+	display: none;
+}
+
+#visittable .col-1 [type="submit"] {
+	background-color: transparent;
+	border: none;
+	position: absolute;
+	top:0px;
+	right: 0px;
+	bottom: 0px;
+	left: 0px;
+	width: 100%;
+	cursor: pointer;
+	padding:0px;
 }

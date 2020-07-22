@@ -35,6 +35,5 @@ pubkey = ./keys/public_key.pub
 privkey = ./keys/private_key.ppk
 
 [log]
-base = ./
-file = ilsc.log
+file = ./ilsc.log
 level = INFO
