@@ -5,12 +5,12 @@ A simple web application to collect contact information from visitors during the
 Basic intention is to provide an alternative way to collect visitor data during SARS CoV 2 pandemic. Since regulations force us to collect this data and no mobile phone app should be used we started this approach
 
 ## How it works
-basically a visitor opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
+Basically a visitor opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
 Visitor data is stored assymetric (why? because i can) within database and only users with admin permission can read this data. Visits and visitor data older than the given threshold will be deleted automatically.
 
 ## Requirements
-On visitor side ther is only a internet connection needed.
-To run this application server side Python >= 3.7 is needed. All required modules are listet within requirements.txt.
+All you need on the visitor's side is an internet connection and a browser.
+To run this application server side Python >= 3.7 is needed. All required modules are listet within requirements.txt. For SSL connection valid certificates are needed. <a href="https://letsencrypt.org/de/">Let's encrypt</a> is your friend. If you have a guest wlan you could run all this e.g. on a Raspberry Pi accessible over your network.
 
 ## Usage visitor
 1. Open Url
@@ -43,7 +43,7 @@ Scanning is not available for ios devices as the used library can not access cam
 1. change username and password and add (optional) users
 
 ## Used third party modules  
-https://github.com/schmich/instascan thxalot nice work done dude
+https://github.com/schmich/instascan thx a lot, nice work done dude
 
 ## Disclaimer
 I absolutely do not take over any responsibility for the correctness of imprint and gprd. If there is something wrong ... let me now
