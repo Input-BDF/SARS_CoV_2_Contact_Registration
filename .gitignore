@@ -17,3 +17,4 @@ __pycache__
 /src/migrations
 /src/migrate.cfg
 /src/migrate.py
+/src/static/codes/*.png

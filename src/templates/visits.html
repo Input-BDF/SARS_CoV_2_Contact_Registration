@@ -1,0 +1,38 @@
+{% extends "main.html" %}
+{% block body %}
+{% if msg: %}
+	{% for t,m in msg.items() %}
+		<div id="info" class="{{ t }}">{{ m|safe }}</div>
+	{% endfor %}
+{% endif %}
+<div>
+	<div id="visittable">
+		<div class="header row">
+			<div class="actions col col-1"></div>
+			<div class="timecol col col-2">
+				<div>Besuch</div>
+				<div >(in/out)</div>
+			</div>
+			<div class="col col-3">Sektion</div>
+		</div>
+		{% if visits: %}
+			{% for visit in visits %}
+				<div class="visittrow row">
+					<div class="actions col col-1">
+					<form action="{{ url_for('r_guests') }}" method="post" target="_blank">
+						{{ form.csrf_token }}
+						<input type="text" name="visitdate" value="{{ visit.day }}">
+						<input id="submit" type="submit" value="&#128269;" title="Alle Besucher anzeigen">
+					</form>
+					</div>
+					<div class="timecol col col-2">
+						<div>{{ visit.checkin }}</div>
+						<div>{{ visit.checkout }}</div>
+					</div>
+					<div class="col col-3">{{ devisions[visit.devision] }}</div>
+				</div>
+			{% endfor %}
+		{% endif %}
+	</div>
+</div>
+{% endblock %}
