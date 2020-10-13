@@ -1,0 +1,27 @@
+{% extends "main.html" %}
+{% block body %}
+{% if msg: %}
+	{% for t,m in msg.items() %}
+		<div id="info" class="{{ t }}">{{ m|safe }}</div>
+	{% endfor %}
+{% endif %}
+<table>
+<tbody>
+<tr>
+  <th>Organisation</th>
+  <th>Location</th>
+  <th style="width:5%;">&nbsp;</th>
+  <th style="width:11%;">&nbsp;</th>
+</tr>
+{% for location in locations %}
+<tr>
+  <td>{{ org[location.organisation|string] }}</td>
+  <td>{{ location.name }}</td>
+  <td><a href="{{ url_for('r_location_edit', lid=location.id) }}"><button>Edit</button></a></td>
+  <td><a href="{{ url_for('r_location_delete', lid=location.id) }}"><button>Delete</button></a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<a href="{{ url_for('r_location_add') }}"><button>Add Location</button></a>
+{% endblock %}
