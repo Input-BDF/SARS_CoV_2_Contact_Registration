@@ -12,6 +12,8 @@ __all__ = [
     'User',
     'DBGuest',
     'DBCheckin',
+    'DBOrganisations',
+    'DBLocations',
     # methods
     'check_database',
     'init_database'
@@ -178,6 +180,78 @@ class DBCheckin(appDatabase.Model):
     
     def entitytype(self):
         return __name__
+
+class DBOrganisations(appDatabase.Model):
+    '''
+    Organisations databse
+    '''
+    __tablename__ = 'tbl_organisations'
+    __usage__ = 'Organisations'
+    # Columns
+    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
+    name = appDatabase.Column(appDatabase.VARCHAR(255))
+
+    ##
+    # Public methods
+    ##
+    def __init__(self, name, gid = None):
+        try:
+            self.id = gid #Primary Key
+            self.name = name
+
+        except Exception as e:
+            print(e)
+
+        
+    def __repr__(self):
+        return f'<Organisation {self.guid}>'
+    
+    def json_serialize(self,*args):
+        for a in args:
+            sdict = self.__dict__
+            if a in sdict:
+                del sdict[a]
+        return sdict
+    
+    def entitytype(self):
+        return __name__
+
+class DBLocations(appDatabase.Model):
+    '''
+    Locations databse
+    '''
+    __tablename__ = 'tbl_locations'
+    __usage__ = 'Locations'
+    # Columns
+    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
+    name = appDatabase.Column(appDatabase.VARCHAR(255))
+    organisation = appDatabase.Column(appDatabase.Integer, default=0)
+    ##
+    # Public methods
+    ##
+    def __init__(self, name, organisation=0, lid = None):
+        try:
+            self.id = lid #Primary Key
+            self.name = name
+            self.organisation = organisation
+
+        except Exception as e:
+            print(e)
+
+        
+    def __repr__(self):
+        return f'<Location {self.lid}>'
+    
+    def json_serialize(self,*args):
+        for a in args:
+            sdict = self.__dict__
+            if a in sdict:
+                del sdict[a]
+        return sdict
+    
+    def entitytype(self):
+        return __name__
+
 ##
 # Database initialization
 ##

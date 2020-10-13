@@ -19,7 +19,7 @@ from sqlalchemy import and_, between
 from datetime import datetime, timedelta
 from .websocket import *
 
-from ilsc.database import DBGuest, DBCheckin, User
+from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations
 from ilsc import caesar
 
 from bs4 import BeautifulSoup
@@ -505,6 +505,134 @@ class Backend(object):
             except Exception as e:
                 self.logger.debug(e)
                 return None
+
+    def fetch_element_by_id(self, element, eid):
+        '''
+        Query Database for element based on id
+        '''
+        with self.flaskApp.app_context():
+            try:
+                result = element.query.filter_by(id=int(eid)).first()
+                if result:
+                    return result
+                else:
+                    return None
+            except Exception as e:
+                self.logger.debug(e)
+                return None
+
+    def add_organisation(self, name):
+        '''
+        add user to database
+        '''
+        try:
+            with self.flaskApp.app_context():
+                new_org = DBOrganisations(name)
+                self.appDatabase.session.add(new_org)
+                self.appDatabase.session.commit()
+            return True, ''
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
+
+    def fetch_element_lists(self, element):
+        '''
+        Query Database for connections via type
+        '''
+        with self.flaskApp.app_context():
+            try:
+                eid = element.id.label("id")
+                name = element.name.label("name")
+
+                _query = self.appDatabase.session.query(eid, name)\
+                                               .order_by(eid)
+                elements = _query.all()
+
+                if elements:
+                    elist = []
+                    edict = {}
+                    for e in elements:
+                        elist.append((str(e.id),e.name))
+                        edict[str(e.id)] = e.name
+                    
+                    return elist, edict
+                else:
+                    return [],{}
+            except Exception as e:
+                self.logger.debug(e)
+                return [],{}
+
+    def update_organisation(self, oid, form):
+        '''
+        update db organisation data
+        '''
+        with self.flaskApp.app_context():
+            try:
+                organisation = DBOrganisations.query.filter_by(id=int(oid)).first()
+                organisation.name = form.name.data #clean_strings(form.name.data).decode('utf-8')
+
+                if self.appDatabase.session.is_modified(organisation):
+                    self.appDatabase.session.commit()
+                    return True, f'"{organisation.name}" erfolgreich geändert'
+                return True, f'Für "{organisation.name}" hat sich nichts geändert.'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
+
+    def fetch_locations(self):
+        '''
+        Query Database for locations
+        '''
+        with self.flaskApp.app_context():
+            try:
+                lid = DBLocations.id.label("id")
+                name = DBLocations.name.label("name")
+                organisation = DBLocations.organisation.label("organisation")
+
+                _query = self.appDatabase.session.query(lid, name, organisation)\
+                                               .order_by(lid)
+                locations = _query.all()
+
+                if locations:
+
+                    return locations
+                else:
+                    return []
+            except Exception as e:
+                self.logger.debug(e)
+                return None
+
+    def add_location(self, name, organisation):
+        '''
+        add user to database
+        '''
+        try:
+            with self.flaskApp.app_context():
+                new_loc = DBLocations(name, int(organisation))
+                self.appDatabase.session.add(new_loc)
+                self.appDatabase.session.commit()
+            return True, ''
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
+
+    def update_location(self, lid, form):
+        '''
+        update db location data
+        '''
+        with self.flaskApp.app_context():
+            try:
+                location = DBLocations.query.filter_by(id=int(lid)).first()
+                location.name = form.name.data#clean_strings(form.name.data).decode('utf-8')
+                location.organisation = int(form.organisation.data)
+
+                if self.appDatabase.session.is_modified(location):
+                    self.appDatabase.session.commit()
+                    return True, f'"{location.name}" erfolgreich geändert'
+                return True, f'Für "{location.name}" hat sich nichts geändert.'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
 
     def fetch_guests(self, date, devision = None):
         '''

@@ -92,3 +92,29 @@ class DateForm(FlaskForm):
         else:
             return result
     '''
+
+class OrganisationForm(FlaskForm):
+    name = StringField(label = 'Organisation',
+                            validators=[InputRequired(message='Bitte Namen eingeben'), length(max=256, message='Maximal 256 Zeichen erlaubt.')],
+                            filters=(),
+                            description='Organisationsname',
+                            id='orgname',
+                            render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
+                            )
+    
+    def __init__(self, choices = [], obj = None):
+        super().__init__(obj = obj)
+
+class LocationForm(FlaskForm):
+    name = StringField(label = 'Location',
+                            validators=[InputRequired(message='Bitte Namen eingeben'), length(max=256, message='Maximal 256 Zeichen erlaubt.')],
+                            filters=(),
+                            description='Locationname',
+                            id='locname',
+                            render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
+                            )
+    organisation = SelectField(label = 'Organisation')
+    
+    def __init__(self, choices = [], obj = None):
+        super().__init__(obj = obj)
+        self.organisation.choices = choices

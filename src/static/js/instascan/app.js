@@ -53,7 +53,7 @@
 									JSON.stringify(
 											{
 											'checkin': $('#checkin').val(),
-											'devision': devision_id,
+											'devision': loc_id,
 											}
 									)
 								);
@@ -86,7 +86,7 @@
 							CommitCode.show_message('valid','invalid', data['msg'], true);
 						}
 					}
-					if('COUNTER' in data && data['DEVISION'] == devision_id) {
+					if('COUNTER' in data && data['DEVISION'] == loc_id) {
 						$("#check_count").text(data['COUNTER']);
 					}
 				} catch(e) {
@@ -169,7 +169,7 @@
 						JSON.stringify(
 								{
 								'exists': content,
-								'devision': devision_id,
+								'devision': loc_id,
 								}
 						)
 					);
@@ -207,7 +207,7 @@
 					JSON.stringify(
 							{
 							'checkin': this.value,
-							'devision': devision_id,
+							'devision': loc_id,
 							}
 					)
 				);
@@ -217,7 +217,7 @@
 					JSON.stringify(
 							{
 							'checkout': this.value,
-							'devision': devision_id,
+							'devision': loc_id,
 							}
 					)
 				);

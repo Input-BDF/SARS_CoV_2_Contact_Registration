@@ -18,7 +18,7 @@
 				<section class="cameras">
 					<h2>Cameras</h2><button id="show_cams"></button>
 					<div class="links">
-						<span>{{ devision|safe }}: </span><span id="check_count">{{ count }} </span><span class="bio">&#9763;</span>
+						<span>{{ location|safe }}: </span><span id="check_count">{{ count }} </span><span class="bio">&#9763;</span>
 						{% if is_admin %}
 						<a href="{{ url_for('r_users') }}">Backend</a>
 						<span class="bio">&#9763;</span>
@@ -54,7 +54,7 @@
 			<div id="scanmsg" class="valid">Successfully checked in</div>
 		</div>
 		<script type="text/javascript">var wsconfig = {{ wsocket|tojson|safe }};</script>
-		<script type="text/javascript">var devision_id = {{ devision_id|safe }};</script>
+		<script type="text/javascript">var loc_id = {{ loc_id|safe }};</script>
 		<script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 		<script type="text/javascript" src="{{ url_for('static', filename='js/instascan/app.js') }}"></script>
 	</body>

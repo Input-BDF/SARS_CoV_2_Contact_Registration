@@ -18,7 +18,7 @@
 {% for user in users %}
 <tr>
   <td>{{ user.username }}</td>
-  <td>{{ dev[user.devision] }}</td>
+  <td>{{ loc[user.devision|string] }}</td>
   <td>
   {% if user.isadmin: %}
     &#10004;

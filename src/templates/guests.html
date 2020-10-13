@@ -39,7 +39,7 @@
 						<div>{{ guest.checkin }}</div>
 						<div>{{ guest.checkout }}</div>
 					</div>
-					<div class="col col-4">{{ devisions[guest.devision] }}</div>
+					<div class="col col-4">{{ loc[guest.devision|string] }}</div>
 				</div>
 			{% endfor %}
 		{% endif %}

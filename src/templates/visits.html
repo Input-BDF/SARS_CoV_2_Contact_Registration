@@ -29,7 +29,7 @@
 						<div>{{ visit.checkin }}</div>
 						<div>{{ visit.checkout }}</div>
 					</div>
-					<div class="col col-3">{{ devisions[visit.devision] }}</div>
+					<div class="col col-3">{{ loc[visit.devision|string] }}</div>
 				</div>
 			{% endfor %}
 		{% endif %}

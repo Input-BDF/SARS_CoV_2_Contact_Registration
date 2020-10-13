@@ -16,9 +16,10 @@
 {% for organisation in organisations %}
 <tr>
   <td>{{ organisation.name }}</td>
-  <td>{{ organisation.name }}</td>
+  <td>not implemented</td>
   <td><a href="{{ url_for('r_organisation_edit', oid=organisation.id) }}"><button>Edit</button></a></td>
-  <td><a href="{{ url_for('r_organisation_delete', oid=organisation.id) }}"><button>Delete</button></a></td>
+    <td><a href="{{ url_for('r_organisation_delete', oid=organisation.id) }}"><button>Delete</button></a></td>
+
 </tr>
 {% endfor %}
 </tbody>
