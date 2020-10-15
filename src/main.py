@@ -271,8 +271,14 @@ def r_scanning():
     try:
         loc_id = get_user_devision()
         _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
+        _, orgdict = appBackend.fetch_element_lists(ilsc.DBOrganisations)
+        if not bool(orgdict):
+            return flask.redirect(flask.url_for('r_organisations'),code=302)
+        if not bool(locdict):
+            return flask.redirect(flask.url_for('r_locations'),code=302)
+        location = locdict[str(loc_id)]
         count = appBackend.count_guests(loc_id)
-        return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = loc_id, location = locdict[str(loc_id)])
+        return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = loc_id, location = location)
     except Exception as e:
         print(e)
 

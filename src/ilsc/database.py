@@ -194,9 +194,9 @@ class DBOrganisations(appDatabase.Model):
     ##
     # Public methods
     ##
-    def __init__(self, name, gid = None):
+    def __init__(self, name, oid = None):
         try:
-            self.id = gid #Primary Key
+            self.id = oid #Primary Key
             self.name = name
 
         except Exception as e:
@@ -287,6 +287,17 @@ def init_database():
                         isadmin = True,
                         do_hash=True)
         appDatabase.session.add(dauser)
+        appDatabase.session.commit()
+
+        organisation = DBOrganisations(oid = 0,
+                            name='Mainorganisation')
+        appDatabase.session.add(organisation)
+        appDatabase.session.commit()
+
+        organisation = DBLocations(lid = 0,
+                            name='Mainlocation',
+                            organisation = 0)
+        appDatabase.session.add(organisation)
         appDatabase.session.commit()
 
     except Exception as e:
