@@ -8,15 +8,15 @@
 <table>
 <tbody>
 <tr>
-  <th>Organisation</th>
   <th>Location</th>
+  <th>Organisation</th>
   <th style="width:5%;">&nbsp;</th>
   <th style="width:11%;">&nbsp;</th>
 </tr>
 {% for location in locations %}
 <tr>
-  <td>{{ org[location.organisation|string] }}</td>
   <td>{{ location.name }}</td>
+  <td>{{ org[location.organisation|string] }}</td>
   <td><a href="{{ url_for('r_location_edit', lid=location.id) }}"><button>Edit</button></a></td>
   <td><a href="{{ url_for('r_location_delete', lid=location.id) }}"><button>Delete</button></a></td>
 </tr>

@@ -163,7 +163,7 @@ def check_messages():
 
 def is_admin():
     '''
-    return True if user is no admin
+    return True if user is admin
     '''
     if '_user_id' in flask.session.keys():
         return flask.session['_user_id'] and appBackend.check_admin(flask.session['_user_id'])
@@ -319,6 +319,9 @@ def r_users():
     if not is_admin():
         return __render('nope.html')
 
+    _u_loc = get_user_devision()
+    _u_org = appBackend.get_location_organisation(_u_loc)
+    
     _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
     users = ilsc.User.query.all()
     msg = check_messages()

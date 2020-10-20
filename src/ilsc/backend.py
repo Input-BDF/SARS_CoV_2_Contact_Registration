@@ -13,6 +13,7 @@ import os
 import json
 import pyqrcode
 import uuid
+import flask
 from twisted.web.server import Site
 from autobahn.twisted.resource import WebSocketResource, Resource
 from sqlalchemy import and_, between
@@ -506,6 +507,14 @@ class Backend(object):
                 self.logger.debug(e)
                 return None
 
+    def get_location_organisation(self, lid):
+        '''
+        return organisation associated to given location id
+        '''
+        oid = self.fetch_element_by_id(DBLocations, lid)
+        return oid.organisation if oid else None
+        
+        
     def fetch_element_by_id(self, element, eid):
         '''
         Query Database for element based on id
