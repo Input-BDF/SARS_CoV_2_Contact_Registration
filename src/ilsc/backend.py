@@ -89,7 +89,16 @@ class Backend(object):
         self.websocket = None
         self.superuser = superuser
         self.init_websocket()
-        
+
+    def is_admin(self):
+        '''
+        return True if user is admin
+        '''
+        if '_user_id' in flask.session.keys():
+            return flask.session['_user_id'] and self.check_admin(flask.session['_user_id'])
+        else:
+            return False
+
     def checkout_all(self):
         '''
         Query Database an checkout all
@@ -479,7 +488,7 @@ class Backend(object):
 
     def check_admin(self, uid):
         '''
-        Query Database for user based on guid
+        Check if user is admin based on uid
         '''
         with self.flaskApp.app_context():
             try:
@@ -492,13 +501,15 @@ class Backend(object):
                 self.logger.debug(e)
                 return False
 
-    def get_user_devision(self, uid):
+    def get_current_user_location(self):
         '''
-        Query Database for user based on guid
+        Query Database for user location based on uuid
         '''
+        if not flask.session['_user_id']: return None
+        
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(userid=str(uid)).first()
+                user = User.query.filter_by(userid=str(flask.session['_user_id'])).first()
                 if user:
                     return user.devision
                 else:
@@ -513,8 +524,70 @@ class Backend(object):
         '''
         oid = self.fetch_element_by_id(DBLocations, lid)
         return oid.organisation if oid else None
-        
-        
+
+    def get_organisation_locations(self):
+        '''
+        Query Database for locations by organisation id
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _u_loc = self.get_current_user_location()
+                _u_org = self.get_location_organisation(_u_loc)
+
+                eid = DBLocations.id.label("id")
+                name = DBLocations.name.label("name")
+                #org = element.name.label("organisation")
+
+                _query = self.appDatabase.session.query(eid, name)\
+                                        .filter_by(organisation=_u_org)\
+                                        .order_by(eid)
+                elements = _query.all()
+
+                if elements:
+                    edict = {}
+                    for e in elements:
+                        edict[str(e.id)] = e.name
+                    
+                    return edict
+                else:
+                    return {}
+            except Exception as e:
+                self.logger.debug(e)
+                return {}
+
+    def get_organisation_users(self):
+        '''
+        Query for users belonging to current session user organisation
+        '''
+        try:
+
+            _locdict = self.get_organisation_locations()
+            #users = ilsc.User.query.all()
+            _query = User.query.filter(User.devision.in_(_locdict.keys()))
+            _users = _query.all()
+            if _users:
+                return _users, _locdict
+            else:
+                return [],{}
+        except Exception as e:
+            self.logger.debug(e)
+            return [],{}
+
+    def check_organisation_permission(self, _t_loc):
+        '''
+        Check if user is allowed to access organisation infos
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _u_loc = self.get_current_user_location()
+                _u_org = self.get_location_organisation(_u_loc)
+                _t_org = self.get_location_organisation(_t_loc)
+                return _u_org == _t_org
+
+            except Exception as e:
+                self.logger.debug(e)
+                return False
+
     def fetch_element_by_id(self, element, eid):
         '''
         Query Database for element based on id
@@ -643,7 +716,7 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
 
-    def fetch_guests(self, date, devision = None):
+    def fetch_guests(self, date, locations = None):
         '''
         Query Database for guests based on date
         '''
@@ -661,7 +734,8 @@ class Backend(object):
                 end = (date+timedelta(days=1)).strftime("%Y-%m-%d")
                 _query = self.appDatabase.session.query(guestuid, fname, sname, contact, checkin, checkout, devision)\
                                                .filter(and_(guestuid == DBCheckin.guid,
-                                                            between(checkin, start, end)
+                                                            between(checkin, start, end),
+                                                            devision.in_(locations)
                                                             ))\
                                                .order_by(checkin)
                 guests = _query.all()

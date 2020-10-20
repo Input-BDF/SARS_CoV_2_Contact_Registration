@@ -147,7 +147,7 @@ def __render(template, **kwargs):
         logging.warning(str(e))
     # pass always config data
     try: 
-        return flask.render_template(template, config=appConfig.dict(), is_admin = is_admin(), **kwargs)
+        return flask.render_template(template, config=appConfig.dict(), is_admin = appBackend.is_admin(), **kwargs)
     except Exception as e:
         logging.error(str(e))
 
@@ -159,23 +159,6 @@ def check_messages():
         msg = flask.session['messages']
         flask.session.pop('messages')
         return json.loads(msg)
-    return None
-
-def is_admin():
-    '''
-    return True if user is admin
-    '''
-    if '_user_id' in flask.session.keys():
-        return flask.session['_user_id'] and appBackend.check_admin(flask.session['_user_id'])
-    else:
-        return False
-
-def get_user_devision():
-    '''
-    return current user devision
-    '''
-    if flask.session['_user_id']:
-        return appBackend.get_user_devision(flask.session['_user_id'])
     return None
 
 ##
@@ -269,7 +252,7 @@ def r_gprd():
 @flask_login.login_required
 def r_scanning():
     try:
-        loc_id = get_user_devision()
+        loc_id = appBackend.get_current_user_location()
         _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
         _, orgdict = appBackend.fetch_element_lists(ilsc.DBOrganisations)
         if not bool(orgdict):
@@ -316,16 +299,12 @@ def r_signout():
 @flaskApp.route('/users')#, methods=['GET','POST'])
 @flask_login.login_required
 def r_users():
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
-    _u_loc = get_user_devision()
-    _u_org = appBackend.get_location_organisation(_u_loc)
-    
-    _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
-    users = ilsc.User.query.all()
+    _users, _lcodict = appBackend.get_organisation_users()
     msg = check_messages()
-    return __render('users.html', users=users, msg=msg, loc = locdict)
+    return __render('users.html', users=_users, msg=msg, loc=_lcodict)
 
 @flaskApp.route('/user/edit/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -333,12 +312,14 @@ def r_user_edit(uid):
     '''
     render user edit form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
-    loclist, _ = appBackend.fetch_element_lists(ilsc.DBLocations)
-    form = ilsc.forms.UserForm(choices = loclist)
+    _locs = appBackend.get_organisation_locations().items()
+    form = ilsc.forms.UserForm(choices = list(_locs))
     user = appBackend.fetch_user(uid)
+    if not appBackend.check_organisation_permission(user.devision):
+        return __render('nope.html')
 
     if user:
         if 'POST' == flask.request.method and form.validate_on_submit():
@@ -349,7 +330,7 @@ def r_user_edit(uid):
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_users'),code=302)
         
-        form = ilsc.forms.UserForm(obj = user, choices = loclist)
+        form = ilsc.forms.UserForm(obj = user, choices = list(_locs))
         return __render('user_edit.html', form = form, uid=uid, superuser = MAGIC_USER_ID==user.id)
 
     else:
@@ -361,7 +342,7 @@ def r_user_passwd(uid):
     '''
     render user edit form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     form = ilsc.forms.ChangePasswd()
@@ -386,7 +367,7 @@ def r_user_delete(uid):
     '''
     render user delete form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     form = None
@@ -398,7 +379,7 @@ def r_user_add():
     '''
     render user add form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     loclist, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
@@ -422,7 +403,7 @@ def r_user_remove():
     '''
     remove user
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
     try:
         _userid = flask.request.form['userid'] if 'userid' in flask.request.form else 0
@@ -440,7 +421,7 @@ def r_organisations():
     '''
     Organisation overview page
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     organisations = ilsc.DBOrganisations.query.all()
@@ -453,7 +434,7 @@ def r_organisation_add():
     '''
     render organisation add form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     orglist, _ = appBackend.fetch_element_lists(ilsc.DBOrganisations)
@@ -472,7 +453,7 @@ def r_organisation_edit(oid):
     '''
     organisation edit form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     form = ilsc.forms.OrganisationForm()
@@ -499,7 +480,7 @@ def r_organisation_delete(oid):
     '''
     location delete form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     form = None
@@ -511,7 +492,7 @@ def r_locations():
     '''
     location overview page
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     _, orgdict = appBackend.fetch_element_lists(ilsc.DBOrganisations)
@@ -526,7 +507,7 @@ def r_location_add():
     '''
     render location add form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     orglist, _ = appBackend.fetch_element_lists(ilsc.DBOrganisations)
@@ -546,7 +527,7 @@ def r_location_edit(lid):
     '''
     location edit form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     orglist, _ = appBackend.fetch_element_lists(ilsc.DBOrganisations)
@@ -574,7 +555,7 @@ def r_location_delete(lid):
     '''
     location delete form
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
 
     form = None
@@ -586,15 +567,15 @@ def r_guests():
     '''
     display all guest at given day
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
     guests = []
-    _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
+    _locs = appBackend.get_organisation_locations()
     form = ilsc.forms.DateForm()
     if form.validate_on_submit():
         date = form.visitdate.data#.strftime('%Y-%m-%d')
-        guests = appBackend.fetch_guests(date)
-    return __render('guests.html', form=form, guests=guests, loc = locdict)
+        guests = appBackend.fetch_guests(date, locations = _locs.keys())
+    return __render('guests.html', form=form, guests=guests, loc = _locs)
 
 @flaskApp.route('/visits/<guid>', methods=['GET'])
 @flask_login.login_required
@@ -602,7 +583,7 @@ def r_visits(guid):
     '''
     display all visits by guid
     '''
-    if not is_admin():
+    if not appBackend.is_admin():
         return __render('nope.html')
     visits = []
     _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
