@@ -102,7 +102,7 @@ class OrganisationForm(FlaskForm):
                             render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
                             )
     
-    def __init__(self, choices = [], obj = None):
+    def __init__(self, obj = None):
         super().__init__(obj = obj)
 
 class LocationForm(FlaskForm):
@@ -113,8 +113,6 @@ class LocationForm(FlaskForm):
                             id='locname',
                             render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
                             )
-    organisation = SelectField(label = 'Organisation')
-    
-    def __init__(self, choices = [], obj = None):
+
+    def __init__(self, obj = None):
         super().__init__(obj = obj)
-        self.organisation.choices = choices

@@ -518,6 +518,28 @@ class Backend(object):
                 self.logger.debug(e)
                 return None
 
+    def check_superuser(self):
+        '''
+        Query Database for user location based on uuid
+        '''
+        if not flask.session['_user_id']: return None
+        
+        with self.flaskApp.app_context():
+            try:
+                user = User.query.filter_by(userid=str(flask.session['_user_id'])).first()
+                if user:
+                    return self.superuser == user.id
+                else:
+                    return False
+            except Exception as e:
+                self.logger.debug(e)
+                return False
+
+    def get_current_user_organisation(self):
+        _u_loc = self.get_current_user_location()
+        _u_org = self.get_location_organisation(_u_loc)
+        return _u_org
+
     def get_location_organisation(self, lid):
         '''
         return organisation associated to given location id
@@ -573,16 +595,16 @@ class Backend(object):
             self.logger.debug(e)
             return [],{}
 
-    def check_organisation_permission(self, _t_loc):
+    def check_organisation_permission(self, _test_loc):
         '''
         Check if user is allowed to access organisation infos
         '''
         with self.flaskApp.app_context():
             try:
-                _u_loc = self.get_current_user_location()
-                _u_org = self.get_location_organisation(_u_loc)
-                _t_org = self.get_location_organisation(_t_loc)
-                return _u_org == _t_org
+                _user_loc = self.get_current_user_location()
+                _user_org = self.get_location_organisation(_user_loc)
+                _test_org = self.get_location_organisation(_test_loc)
+                return _user_org == _test_org
 
             except Exception as e:
                 self.logger.debug(e)
@@ -612,6 +634,8 @@ class Backend(object):
                 new_org = DBOrganisations(name)
                 self.appDatabase.session.add(new_org)
                 self.appDatabase.session.commit()
+                #TODO: add default location
+                #Todo: add default admin
             return True, ''
         except Exception as e:
             self.logger.debug(e)
@@ -706,7 +730,6 @@ class Backend(object):
             try:
                 location = DBLocations.query.filter_by(id=int(lid)).first()
                 location.name = form.name.data#clean_strings(form.name.data).decode('utf-8')
-                location.organisation = int(form.organisation.data)
 
                 if self.appDatabase.session.is_modified(location):
                     self.appDatabase.session.commit()

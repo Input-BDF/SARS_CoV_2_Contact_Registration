@@ -318,10 +318,10 @@ def r_user_edit(uid):
     _locs = appBackend.get_organisation_locations().items()
     form = ilsc.forms.UserForm(choices = list(_locs))
     user = appBackend.fetch_user(uid)
-    if not appBackend.check_organisation_permission(user.devision):
-        return __render('nope.html')
 
-    if user:
+    if user and appBackend.check_organisation_permission(user.devision):
+        if user.id == MAGIC_USER_ID and not appBackend.check_superuser():
+            return flask.redirect(flask.url_for('r_users'),code=302)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_user(user.id, form)
             if success:
@@ -347,7 +347,11 @@ def r_user_passwd(uid):
 
     form = ilsc.forms.ChangePasswd()
     user = appBackend.fetch_user(uid)
-    if user:
+
+    if user and appBackend.check_organisation_permission(user.devision):
+
+        if user.id == MAGIC_USER_ID and not appBackend.check_superuser():
+            return flask.redirect(flask.url_for('r_users'),code=302)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_password(user.id, form)
             if success:
@@ -382,8 +386,9 @@ def r_user_add():
     if not appBackend.is_admin():
         return __render('nope.html')
 
-    loclist, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
-    form = ilsc.forms.UserAddForm(choices = loclist)
+    #loclist, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
+    _locs = appBackend.get_organisation_locations().items()
+    form = ilsc.forms.UserAddForm(choices = list(_locs))
 
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
@@ -394,8 +399,8 @@ def r_user_add():
                         do_hash=True)
         return flask.redirect(flask.url_for('r_users'),code=302)
     else:
-        return __render('user_add.html', form = form, choices = locdict)
-    return __render('user_add.html', form = form, choices = locdict)
+        return __render('user_add.html', form = form, choices = _locs)
+    return __render('user_add.html', form = form, choices = _locs)
 
 @flaskApp.route('/user-remove', methods=['POST'])
 @flask_login.login_required
@@ -421,7 +426,7 @@ def r_organisations():
     '''
     Organisation overview page
     '''
-    if not appBackend.is_admin():
+    if not appBackend.check_superuser():
         return __render('nope.html')
 
     organisations = ilsc.DBOrganisations.query.all()
@@ -434,18 +439,17 @@ def r_organisation_add():
     '''
     render organisation add form
     '''
-    if not appBackend.is_admin():
+    if not appBackend.check_superuser():
         return __render('nope.html')
 
-    orglist, _ = appBackend.fetch_element_lists(ilsc.DBOrganisations)
-    form = ilsc.forms.OrganisationForm(choices = orglist)
+    form = ilsc.forms.OrganisationForm()
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
         appBackend.add_organisation(name=form.name.data)
         return flask.redirect(flask.url_for('r_organisations'),code=302)
     else:
-        return __render('organisations_add.html', form = form, choices = [])
-    return __render('organisations_add.html', form = form, choices = [])
+        return __render('organisations_add.html', form = form)
+    return __render('organisations_add.html', form = form)
 
 @flaskApp.route('/organisation/edit/<oid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -453,7 +457,7 @@ def r_organisation_edit(oid):
     '''
     organisation edit form
     '''
-    if not appBackend.is_admin():
+    if not appBackend.check_superuser():
         return __render('nope.html')
 
     form = ilsc.forms.OrganisationForm()
@@ -480,7 +484,7 @@ def r_organisation_delete(oid):
     '''
     location delete form
     '''
-    if not appBackend.is_admin():
+    if not appBackend.check_superuser():
         return __render('nope.html')
 
     form = None
@@ -495,11 +499,10 @@ def r_locations():
     if not appBackend.is_admin():
         return __render('nope.html')
 
-    _, orgdict = appBackend.fetch_element_lists(ilsc.DBOrganisations)
-    locations = ilsc.DBLocations.query.all()
+    #_, orgdict = appBackend.fetch_element_lists(ilsc.DBOrganisations)
+    _locs = appBackend.get_organisation_locations()
     msg = check_messages()
-    return __render('locations.html', locations=locations, msg=msg, org = orgdict)
-
+    return __render('locations.html', locations=_locs, msg=msg)#, org = orgdict)
 
 @flaskApp.route('/location/add', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -510,16 +513,15 @@ def r_location_add():
     if not appBackend.is_admin():
         return __render('nope.html')
 
-    orglist, _ = appBackend.fetch_element_lists(ilsc.DBOrganisations)
-    form = ilsc.forms.LocationForm(choices = orglist)
+    form = ilsc.forms.LocationForm()
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
         appBackend.add_location(name=form.name.data,
-                        organisation=form.organisation.data)
+                        organisation=appBackend.get_current_user_organisation())
         return flask.redirect(flask.url_for('r_locations'),code=302)
     else:
-        return __render('locations_add.html', form = form, choices = [])
-    return __render('locations_add.html', form = form, choices = [])
+        return __render('locations_add.html', form = form)
+    return __render('locations_add.html', form = form)
 
 @flaskApp.route('/locations/edit/<lid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -530,11 +532,10 @@ def r_location_edit(lid):
     if not appBackend.is_admin():
         return __render('nope.html')
 
-    orglist, _ = appBackend.fetch_element_lists(ilsc.DBOrganisations)
-    form = ilsc.forms.LocationForm(choices = orglist)
+    form = ilsc.forms.LocationForm()
     location = appBackend.fetch_element_by_id(ilsc.DBLocations, lid)
 
-    if location:
+    if location and appBackend.check_organisation_permission(lid):
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_location(location.id, form)
             if success:
@@ -543,7 +544,7 @@ def r_location_edit(lid):
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_locations'),code=302)
         
-        form = ilsc.forms.LocationForm(obj = location, choices = orglist)
+        form = ilsc.forms.LocationForm(obj = location)
         return __render('locations_edit.html', form = form, lid=lid)
 
     else:
@@ -623,7 +624,6 @@ scheduler.start()
 
 if appConfig.app['cleanonstart']:
     cleanup_everything()
-
 
 #appBackend.inject_random_userdata()#just for testing
 try:

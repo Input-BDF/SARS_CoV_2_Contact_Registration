@@ -8,8 +8,6 @@
 	{{ form.csrf_token }}
 	{{ form.name.label }}
 	{{ form.name }}
-	{{ form.organisation.label }}
-	{{ form.organisation }}
 	<ul>
 		{% for key,field in form._fields.items() %}
 			{% for error in field.errors %}

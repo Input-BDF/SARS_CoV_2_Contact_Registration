@@ -9,16 +9,16 @@
 <tbody>
 <tr>
   <th>Location</th>
-  <th>Organisation</th>
+  <th>Autocheckout (Stunde)</th>
   <th style="width:5%;">&nbsp;</th>
   <th style="width:11%;">&nbsp;</th>
 </tr>
-{% for location in locations %}
+{% for k,v in locations.items() %}
 <tr>
-  <td>{{ location.name }}</td>
-  <td>{{ org[location.organisation|string] }}</td>
-  <td><a href="{{ url_for('r_location_edit', lid=location.id) }}"><button>Edit</button></a></td>
-  <td><a href="{{ url_for('r_location_delete', lid=location.id) }}"><button>Delete</button></a></td>
+  <td>{{ v }}</td>
+  <td></td>
+  <td><a href="{{ url_for('r_location_edit', lid=k) }}"><button>Edit</button></a></td>
+  <td><a href="{{ url_for('r_location_delete', lid=k) }}"><button>Delete</button></a></td>
 </tr>
 {% endfor %}
 </tbody>
