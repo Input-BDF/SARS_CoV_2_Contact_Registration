@@ -10,6 +10,8 @@
 	{{ form.username }}
 	{{ form.devision.label }}
 	{{ form.devision }}
+	{{ form.roles.label }}
+	{{ form.roles(multiple=True) }}
 	<div class="checkbox">
 	<label for="{{ form.isadmin.label.field_id }}">
 	{{ form.isadmin(disabled=superuser)}}

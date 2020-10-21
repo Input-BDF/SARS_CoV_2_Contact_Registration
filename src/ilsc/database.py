@@ -10,7 +10,7 @@ __all__ = [
     'appDB',
     # classes
     'User',
-    'Role',
+    'Roles',
     'UserRoles',
     'DBGuest',
     'DBCheckin',
@@ -63,7 +63,9 @@ class User(appDB.Model, flask_login.UserMixin):
     created = appDB.Column(appDB.DateTime)
     active = appDB.Column(appDB.Boolean)
     
-    roles = appDB.relationship('Role', secondary='user_roles')
+    roles = appDB.relationship('Roles', secondary='user_roles',
+                                lazy='subquery',
+                                backref=appDB.backref('user', lazy='dynamic'))
     ##
     # Public methods
     ##
@@ -107,7 +109,7 @@ class User(appDB.Model, flask_login.UserMixin):
     def __hash(string, salt):
         return hashlib.sha512(string + salt).hexdigest()
 
-class Role(appDB.Model):
+class Roles(appDB.Model):
     '''
     Define the Role data-model
     '''
@@ -307,10 +309,10 @@ def init_database():
         appDB.session.add(meta)
         appDB.session.commit()
 
-        super_role = Role(name='SuperUser')
-        admin_role = Role(name='UserAdmin')
-        location_role = Role(name='LocationAdmin')
-        scanner_role = Role(name='Scanner')
+        super_role = Roles(name='SuperUser')
+        visit_role = Roles(name='VisitorAdmin')
+        admin_role = Roles(name='UserAdmin')
+        location_role = Roles(name='LocationAdmin')
         appDB.session.commit()
 
         firstuser = User(username='admin',
@@ -319,7 +321,7 @@ def init_database():
                         isadmin = True,
                         do_hash=True)
 
-        firstuser.roles = [super_role, admin_role, location_role, scanner_role]
+        firstuser.roles = [super_role, visit_role, admin_role, location_role]
 
         appDB.session.add(firstuser)
         appDB.session.commit()

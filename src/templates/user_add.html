@@ -14,6 +14,8 @@
 	{{ form.password }}
 	{{ form.confirm.label }}
 	{{ form.confirm }}
+	{{ form.roles.label }}
+	{{ form.roles(multiple=True) }}
 	<div class="checkbox">
 	<label for="{{ form.isadmin.label.field_id }}">
 	{{ form.isadmin}}

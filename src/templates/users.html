@@ -9,8 +9,8 @@
 <tbody>
 <tr>
   <th>Nutzer</th>
-  <th>Sektion</th>
-  <th>Admin</th>
+  <th>Location</th>
+  <th>Rollen</th>
   <th style="width:5%;">&nbsp;</th>
   <th style="width:11%;">&nbsp;</th>
   <th style="width:5%;">&nbsp;</th>
@@ -20,9 +20,9 @@
   <td>{{ user.username }}</td>
   <td>{{ loc[user.devision|string] }}</td>
   <td>
-  {% if user.isadmin: %}
-    &#10004;
-  {% endif %}
+  {% for role in user.roles %}
+      <span title="{{ role.name }}">{{ role.name[:1] }}</span>
+  {% endfor %}
   </td>
   <td><a href="{{ url_for('r_user_edit', uid=user.id) }}"><button>Edit</button></a></td>
   <td><a href="{{ url_for('r_user_passwd', uid=user.id) }}"><button>Change PW</button></a></td>

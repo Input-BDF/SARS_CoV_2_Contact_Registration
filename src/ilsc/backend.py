@@ -14,13 +14,14 @@ import json
 import pyqrcode
 import uuid
 import flask
+from flask_login import current_user
 from twisted.web.server import Site
 from autobahn.twisted.resource import WebSocketResource, Resource
 from sqlalchemy import and_, between
 from datetime import datetime, timedelta
 from .websocket import *
 
-from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations
+from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, UserRoles
 from ilsc import caesar
 
 from bs4 import BeautifulSoup
@@ -89,15 +90,6 @@ class Backend(object):
         self.websocket = None
         self.superuser = superuser
         self.init_websocket()
-
-    def is_admin(self):
-        '''
-        return True if user is admin
-        '''
-        if '_user_id' in flask.session.keys():
-            return flask.session['_user_id'] and self.check_admin(flask.session['_user_id'])
-        else:
-            return False
 
     def checkout_all(self):
         '''
@@ -412,17 +404,44 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00002) beim Checkout. Oder der wurde grad schon ausgecheckt'
 
+    def add_user(self, username, password, devision, roles = [], isadmin=False, do_hash=True):
+        '''
+        add user to database
+        '''
+        #TODO: User Form as passed argument
+        try:
+            with self.flaskApp.app_context():
+                new_user = User(username, password, devision, isadmin=isadmin, do_hash=do_hash)
+                all_roles = self.get_all_user_roles(plain=True)
+                for i in roles:
+                    new_user.roles.append(all_roles[i-1])
+                self.appDB.session.add(new_user)
+                self.appDB.session.commit()
+            return True, ''
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
+
     def update_user(self, uid, form):
         '''
         Query Database if guid exists in checkin and update @ checkout time
         '''
         with self.flaskApp.app_context():
             try:
+                #do all database queries before user query or else changes will not be applied
+                all_roles = self.get_all_user_roles(plain=True)
+                selected_roles = form.roles.data if bool(form.roles.data) else []
+                #do all database queries before user query or else changes will not be applied
                 user = User.query.filter_by(id=int(uid)).first()
                 user.username = clean_strings(form.username.data).decode('utf-8')
                 user.devision = int(form.devision.data)
-                #keep superuser the superuser
+                if bool(user.roles):
+                    user.roles = []
+                for i in selected_roles:
+                    user.roles.append(all_roles[i-1])
+                #TODO: keep superuser 1 the superuser
                 user.isadmin = True if int(uid) == self.superuser else form.isadmin.data
+                #Need to check if selected roles is empty since then is_modified becomes True
                 if self.appDB.session.is_modified(user):
                     self.appDB.session.commit()
                     return True, f'"{user.username}" erfolgreich geändert'
@@ -447,6 +466,16 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
 
+    def delete_user(self, _userid):
+        '''
+        Delete user from db
+        '''
+        with self.flaskApp.app_context():
+            user = User.query.filter_by(id=int(_userid)).first()
+            if user:
+                self.appDB.session.delete(user)
+                self.appDB.session.commit()
+
     def fetch_user(self, uid):
         '''
         Query Database for user based on guid
@@ -462,78 +491,78 @@ class Backend(object):
                 self.logger.debug(e)
                 return None
 
-    def add_user(self, username, password, devision, isadmin=False, do_hash=True):
-        '''
-        add user to database
-        '''
-        try:
-            with self.flaskApp.app_context():
-                new_user = User(username, password, devision, isadmin=isadmin, do_hash=do_hash)
-                self.appDB.session.add(new_user)
-                self.appDB.session.commit()
-            return True, ''
-        except Exception as e:
-            self.logger.debug(e)
-            return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
-
-    def delete_user(self, _userid):
-        '''
-        Delete user from db
-        '''
-        with self.flaskApp.app_context():
-            user = User.query.filter_by(id=int(_userid)).first()
-            if user:
-                self.appDB.session.delete(user)
-                self.appDB.session.commit()
-
-    def check_admin(self, uid):
-        '''
-        Check if user is admin based on uid
-        '''
-        with self.flaskApp.app_context():
-            try:
-                user = User.query.filter_by(userid=str(uid)).first()
-                if user:
-                    return user.isadmin
-                else:
-                    return False
-            except Exception as e:
-                self.logger.debug(e)
-                return False
-
-    def get_current_user_location(self):
-        '''
-        Query Database for user location based on uuid
-        '''
+    def get_current_user(self):
+        if not current_user.is_authenticated: return None
         if not flask.session['_user_id']: return None
         
         with self.flaskApp.app_context():
             try:
                 user = User.query.filter_by(userid=str(flask.session['_user_id'])).first()
                 if user:
-                    return user.devision
+                    return user
                 else:
                     return None
             except Exception as e:
                 self.logger.debug(e)
-                return None
+
+    def get_all_user_roles(self, plain = False):
+        '''
+        Query Database for user location based on uuid
+        '''
+        try:
+            roles = Roles.query.all()
+            if plain:
+                return roles
+            if roles:
+                all_roles = { r.id : r.name for r in roles }
+                return all_roles
+            else:
+                return []
+        except Exception as e:
+            self.logger.debug(e)
+            return []
+    def get_current_user_roles(self, other_user = None):
+        '''
+        Query Database for user location based on uuid
+        '''
+        try:
+            user = self.get_current_user() if other_user == None else other_user
+            if user:
+                user_roles = { ur.id : ur.name for ur in user.roles }
+                return user_roles
+            else:
+                return {}
+        except Exception as e:
+            self.logger.debug(e)
+            return {}
 
     def check_superuser(self):
         '''
         Query Database for user location based on uuid
         '''
-        if not flask.session['_user_id']: return None
-        
-        with self.flaskApp.app_context():
-            try:
-                user = User.query.filter_by(userid=str(flask.session['_user_id'])).first()
-                if user:
-                    return self.superuser == user.id
-                else:
-                    return False
-            except Exception as e:
-                self.logger.debug(e)
+        try:
+            user_roles = self.get_current_user_roles().values()
+            if user_roles and "SuperUser" in user_roles:
+                return True
+            else:
                 return False
+        except Exception as e:
+            self.logger.debug(e)
+            return False
+
+    def get_current_user_location(self):
+        '''
+        Query Database for user location based on uuid
+        '''
+        try:
+            user = self.get_current_user()
+            if user:
+                return user.devision
+            else:
+                return None
+        except Exception as e:
+            self.logger.debug(e)
+            return None
 
     def get_current_user_organisation(self):
         _u_loc = self.get_current_user_location()

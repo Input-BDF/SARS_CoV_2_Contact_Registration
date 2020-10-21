@@ -6,7 +6,7 @@ Created on 06.06.2020
 '''
 from datetime import date
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SelectField
+from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SelectField, SelectMultipleField, widgets
 
 from wtforms.fields.html5 import DateField
 from wtforms.validators import InputRequired, length, DataRequired, EqualTo
@@ -38,7 +38,10 @@ class RegisterForm(FlaskForm):
                          '<a href="https://corona.thueringen.de/behoerden/ausgewaehlte-verordnungen" target="_blank">Thüringer'\
                          ' Verordnung zur Neuordnung der erforderlichen Maßnahmen zur Eindämmung der Ausbreitung des Coronavirus SARS-CoV-2</a> zu.',
                          validators=[InputRequired(message='Bitte Zustimmung geben')])
-
+class MultiCheckboxField(SelectMultipleField):
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
+    
 class UserForm(FlaskForm):
     username = StringField(label = 'Nutzername',
                             validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.')],
@@ -49,6 +52,10 @@ class UserForm(FlaskForm):
                             )
     isadmin = BooleanField(label = 'Admin')
     devision = SelectField(label = 'Sektion')
+    roles = SelectMultipleField('Nutzerrollen', 
+        coerce=int,
+        option_widget=widgets.CheckboxInput(), 
+        widget=widgets.ListWidget(prefix_label=False) )
     
     def __init__(self, choices = [], obj = None):
         super().__init__(obj = obj)
@@ -76,6 +83,10 @@ class UserAddForm(FlaskForm):
         EqualTo('confirm', message='Passwörter müssen übereinstimmen')
     ])
     confirm = PasswordField('Passwort wiederholen')
+    roles = SelectMultipleField('Nutzerrollen', 
+        coerce=int,
+        option_widget=widgets.CheckboxInput(), 
+        widget=widgets.ListWidget(prefix_label=False) )
     
     def __init__(self, choices = [], obj = None):
         super().__init__(obj = obj)
