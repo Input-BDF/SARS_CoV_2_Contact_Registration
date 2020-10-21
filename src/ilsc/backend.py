@@ -78,13 +78,13 @@ class decoded_guest():
 
 class Backend(object):
     '''Backend class'''
-    def __init__(self, config, flaskApp, appDatabase, superuser):
+    def __init__(self, config, flaskApp, appDB, superuser):
         '''
         Constructs a Backend object
         '''
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.appDatabase = appDatabase
+        self.appDB = appDB
         self.flaskApp = flaskApp
         self.websocket = None
         self.superuser = superuser
@@ -109,7 +109,7 @@ class Backend(object):
 
                 for _guest in _guests:
                     _guest.checkout=datetime.now()
-                self.appDatabase.session.commit()
+                self.appDB.session.commit()
                 self.logger.debug(f'Checked {len(_guests)} entries out')
                 return True, 'Checkout erfolgreich'
             except Exception as e:
@@ -126,8 +126,8 @@ class Backend(object):
                 _query = DBCheckin.query.filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
                 old_checkins = _query.all()
                 for checkin in old_checkins:
-                    self.appDatabase.session.delete(checkin)
-                self.appDatabase.session.commit()
+                    self.appDB.session.delete(checkin)
+                self.appDB.session.commit()
                 self.logger.debug(f'Deleted {len(old_checkins)} entries from checkins')
                 return True, 'Löschen erfolgrreich erfolgreich'
             except Exception as e:
@@ -151,8 +151,8 @@ class Backend(object):
                 codes = []
                 for r in remove_guests:
                     codes.append(r.guid)
-                    self.appDatabase.session.delete(r)
-                self.appDatabase.session.commit()
+                    self.appDB.session.delete(r)
+                self.appDB.session.commit()
                 if len(codes):
                     self.delete_qr_codes(codes)
                 self.logger.debug(f'Deleted {len(remove_guests)} entries from contacts')
@@ -292,8 +292,8 @@ class Backend(object):
                 if not _entity:
                     return False
                 else:
-                    self.appDatabase.session.delete(_entity)
-                    self.appDatabase.session.commit()
+                    self.appDB.session.delete(_entity)
+                    self.appDB.session.commit()
                     return True
             except Exception as e:
                 self.logger.debug(e)
@@ -360,8 +360,8 @@ class Backend(object):
                 if (guid != '' and fname != '' and sname != '' and contact != ''):
                     with self.flaskApp.app_context():
                         new_guest = DBGuest(fname = fname, sname = sname, contact = contact, guid = guid, agreed = agreed)
-                        self.appDatabase.session.add(new_guest)
-                        self.appDatabase.session.commit()
+                        self.appDB.session.add(new_guest)
+                        self.appDB.session.commit()
                     return True, ''
                 else: return False, 'Es fehlen Werte im Formular.'
             else: return False, 'So ein Zufall. Die GUID existiert bereits. Versuchs bitte nochmal.'
@@ -380,8 +380,8 @@ class Backend(object):
             if (not self.check_guid_today(guid, devision)) and (self.check_guid(guid)):
                     with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid, devision = devision)
-                        self.appDatabase.session.add(new_guest)
-                        self.appDatabase.session.commit()
+                        self.appDB.session.add(new_guest)
+                        self.appDB.session.commit()
                     return True, 'Checkin erfolgreich'
             else: return False, 'Fehler beim Checkin'
         except Exception as e:
@@ -404,7 +404,7 @@ class Backend(object):
                 _guest = _query.first()
                 if _guest:
                     _guest.checkout=datetime.now()
-                    self.appDatabase.session.commit()
+                    self.appDB.session.commit()
                     return True, 'Checkout erfolgreich'
                 else:
                     return False, 'Da gabs nix für nen checkout.'
@@ -423,8 +423,8 @@ class Backend(object):
                 user.devision = int(form.devision.data)
                 #keep superuser the superuser
                 user.isadmin = True if int(uid) == self.superuser else form.isadmin.data
-                if self.appDatabase.session.is_modified(user):
-                    self.appDatabase.session.commit()
+                if self.appDB.session.is_modified(user):
+                    self.appDB.session.commit()
                     return True, f'"{user.username}" erfolgreich geändert'
                 return True, f'Für "{user.username}" hat sich nichts geändert.'
             except Exception as e:
@@ -439,8 +439,8 @@ class Backend(object):
             try:
                 user = User.query.filter_by(id=int(uid)).first()
                 user.set_password(form.password.data, do_hash=True)
-                if self.appDatabase.session.is_modified(user):
-                    self.appDatabase.session.commit()
+                if self.appDB.session.is_modified(user):
+                    self.appDB.session.commit()
                     return True, f'"{user.username}" erfolgreich geändert'
                 return True, f'Für "{user.username}" hat sich nichts geändert.'
             except Exception as e:
@@ -469,8 +469,8 @@ class Backend(object):
         try:
             with self.flaskApp.app_context():
                 new_user = User(username, password, devision, isadmin=isadmin, do_hash=do_hash)
-                self.appDatabase.session.add(new_user)
-                self.appDatabase.session.commit()
+                self.appDB.session.add(new_user)
+                self.appDB.session.commit()
             return True, ''
         except Exception as e:
             self.logger.debug(e)
@@ -483,8 +483,8 @@ class Backend(object):
         with self.flaskApp.app_context():
             user = User.query.filter_by(id=int(_userid)).first()
             if user:
-                self.appDatabase.session.delete(user)
-                self.appDatabase.session.commit()
+                self.appDB.session.delete(user)
+                self.appDB.session.commit()
 
     def check_admin(self, uid):
         '''
@@ -560,7 +560,7 @@ class Backend(object):
                 name = DBLocations.name.label("name")
                 #org = element.name.label("organisation")
 
-                _query = self.appDatabase.session.query(eid, name)\
+                _query = self.appDB.session.query(eid, name)\
                                         .filter_by(organisation=_u_org)\
                                         .order_by(eid)
                 elements = _query.all()
@@ -632,8 +632,8 @@ class Backend(object):
         try:
             with self.flaskApp.app_context():
                 new_org = DBOrganisations(name)
-                self.appDatabase.session.add(new_org)
-                self.appDatabase.session.commit()
+                self.appDB.session.add(new_org)
+                self.appDB.session.commit()
                 #TODO: add default location
                 #Todo: add default admin
             return True, ''
@@ -650,7 +650,7 @@ class Backend(object):
                 eid = element.id.label("id")
                 name = element.name.label("name")
 
-                _query = self.appDatabase.session.query(eid, name)\
+                _query = self.appDB.session.query(eid, name)\
                                                .order_by(eid)
                 elements = _query.all()
 
@@ -677,8 +677,8 @@ class Backend(object):
                 organisation = DBOrganisations.query.filter_by(id=int(oid)).first()
                 organisation.name = form.name.data #clean_strings(form.name.data).decode('utf-8')
 
-                if self.appDatabase.session.is_modified(organisation):
-                    self.appDatabase.session.commit()
+                if self.appDB.session.is_modified(organisation):
+                    self.appDB.session.commit()
                     return True, f'"{organisation.name}" erfolgreich geändert'
                 return True, f'Für "{organisation.name}" hat sich nichts geändert.'
             except Exception as e:
@@ -695,7 +695,7 @@ class Backend(object):
                 name = DBLocations.name.label("name")
                 organisation = DBLocations.organisation.label("organisation")
 
-                _query = self.appDatabase.session.query(lid, name, organisation)\
+                _query = self.appDB.session.query(lid, name, organisation)\
                                                .order_by(lid)
                 locations = _query.all()
 
@@ -715,8 +715,8 @@ class Backend(object):
         try:
             with self.flaskApp.app_context():
                 new_loc = DBLocations(name, int(organisation))
-                self.appDatabase.session.add(new_loc)
-                self.appDatabase.session.commit()
+                self.appDB.session.add(new_loc)
+                self.appDB.session.commit()
             return True, ''
         except Exception as e:
             self.logger.debug(e)
@@ -731,8 +731,8 @@ class Backend(object):
                 location = DBLocations.query.filter_by(id=int(lid)).first()
                 location.name = form.name.data#clean_strings(form.name.data).decode('utf-8')
 
-                if self.appDatabase.session.is_modified(location):
-                    self.appDatabase.session.commit()
+                if self.appDB.session.is_modified(location):
+                    self.appDB.session.commit()
                     return True, f'"{location.name}" erfolgreich geändert'
                 return True, f'Für "{location.name}" hat sich nichts geändert.'
             except Exception as e:
@@ -755,7 +755,7 @@ class Backend(object):
 
                 start = date.strftime("%Y-%m-%d")
                 end = (date+timedelta(days=1)).strftime("%Y-%m-%d")
-                _query = self.appDatabase.session.query(guestuid, fname, sname, contact, checkin, checkout, devision)\
+                _query = self.appDB.session.query(guestuid, fname, sname, contact, checkin, checkout, devision)\
                                                .filter(and_(guestuid == DBCheckin.guid,
                                                             between(checkin, start, end),
                                                             devision.in_(locations)
@@ -845,7 +845,7 @@ class Backend(object):
                 _checkout = DBCheckin.checkout.label("checkout")
                 _devision = DBCheckin.devision.label("devision")
 
-                _query = self.appDatabase.session.query(_guestuid, _checkin, _checkout, _devision)\
+                _query = self.appDB.session.query(_guestuid, _checkin, _checkout, _devision)\
                                                .filter(_guestuid == guid.encode('utf-8'))\
                                                .order_by(_checkin)
                 visits = _query.all()
@@ -925,8 +925,8 @@ class Backend(object):
             if not self.check_guid(guid):
                 with self.flaskApp.app_context():
                     new_guest = DBGuest(fname = fname, sname = sname, contact = contact, guid = guid, agreed = agreed)
-                    self.appDatabase.session.add(new_guest)
-                    self.appDatabase.session.commit()
+                    self.appDB.session.add(new_guest)
+                    self.appDB.session.commit()
                 self.test_guest_checkin(guid)
             else: 
                 print('So ein Zufall. Die GUID existiert bereits. Versuchs bitte nochmal.')
@@ -942,8 +942,8 @@ class Backend(object):
             if (not self.check_guid_today(guid, 0)) and (not self.check_guid(guid)):
                     with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid)
-                        self.appDatabase.session.add(new_guest)
-                        self.appDatabase.session.commit()
+                        self.appDB.session.add(new_guest)
+                        self.appDB.session.commit()
                     return True, 'Checkin erfolgreich'
             else: return False, 'Fehler beim Checkin'
         except Exception as e:

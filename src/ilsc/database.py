@@ -7,9 +7,11 @@ Created on 06.06.2020
 
 __all__ = [
     # global objects
-    'appDatabase',
+    'appDB',
     # classes
     'User',
+    'Role',
+    'UserRoles',
     'DBGuest',
     'DBCheckin',
     'DBOrganisations',
@@ -25,17 +27,17 @@ from sqlalchemy_utils import database_exists
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 
-appDatabase = SQLAlchemy()
+appDB = SQLAlchemy()
 
-class ILSCMeta(appDatabase.Model):
+class ILSCMeta(appDB.Model):
     '''
     metadata
     '''
     __tablename__ = 'meta_data'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    version = appDatabase.Column(appDatabase.Text(16))
-    created = appDatabase.Column(appDatabase.DateTime)
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    version = appDB.Column(appDB.Text(16))
+    created = appDB.Column(appDB.DateTime)
     ##
     # Public methods
     ##
@@ -45,21 +47,23 @@ class ILSCMeta(appDatabase.Model):
     def __repr__(self):
         return '<ILSCMeta %r>' % (self.version)
 
-class User(appDatabase.Model, flask_login.UserMixin):
+class User(appDB.Model, flask_login.UserMixin):
     '''
     user database
     '''
     __tablename__ = 'user'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    userid = appDatabase.Column(appDatabase.String(128))
-    username = appDatabase.Column(appDatabase.String(32), unique=True)
-    devision = appDatabase.Column(appDatabase.Integer, default = 0)
-    isadmin = appDatabase.Column(appDatabase.Boolean, default = False)
-    salt = appDatabase.Column(appDatabase.String(32))
-    password = appDatabase.Column(appDatabase.String(128))
-    created = appDatabase.Column(appDatabase.DateTime)
-    active = appDatabase.Column(appDatabase.Boolean)
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    userid = appDB.Column(appDB.String(128))
+    username = appDB.Column(appDB.String(32), unique=True)
+    devision = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_locations.id', ondelete='CASCADE'))
+    isadmin = appDB.Column(appDB.Boolean, default = False)
+    salt = appDB.Column(appDB.String(32))
+    password = appDB.Column(appDB.String(128))
+    created = appDB.Column(appDB.DateTime)
+    active = appDB.Column(appDB.Boolean)
+    
+    roles = appDB.relationship('Role', secondary='user_roles')
     ##
     # Public methods
     ##
@@ -71,8 +75,10 @@ class User(appDatabase.Model, flask_login.UserMixin):
         self.isadmin = isadmin
         self.created = datetime.utcnow()
         self.active = True
+
     def __repr__(self):
         return '<User %r>' % (self.username)
+
     def __call__(self):
         return {
             'username': self.username,
@@ -101,20 +107,37 @@ class User(appDatabase.Model, flask_login.UserMixin):
     def __hash(string, salt):
         return hashlib.sha512(string + salt).hexdigest()
 
-class DBGuest(appDatabase.Model):
+class Role(appDB.Model):
+    '''
+    Define the Role data-model
+    '''
+    __tablename__ = 'roles'
+    id = appDB.Column(appDB.Integer(), primary_key=True)
+    name = appDB.Column(appDB.String(50), unique=True)
+
+class UserRoles(appDB.Model):
+    '''
+    Define the UserRoles association table
+    '''
+    __tablename__ = 'user_roles'
+    id = appDB.Column(appDB.Integer(), primary_key=True)
+    user_id = appDB.Column(appDB.Integer(), appDB.ForeignKey('user.id', ondelete='CASCADE'))
+    role_id = appDB.Column(appDB.Integer(), appDB.ForeignKey('roles.id', ondelete='CASCADE'))
+
+class DBGuest(appDB.Model):
     '''
     guest database
     '''
     __tablename__ = 'tbl_guests'
     __usage__ = 'DBGuest'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    created = appDatabase.Column(appDatabase.DateTime, default=datetime.now)#, onupdate=datetime.now)
-    fname = appDatabase.Column(appDatabase.LargeBinary)
-    sname = appDatabase.Column(appDatabase.LargeBinary)
-    contact = appDatabase.Column(appDatabase.LargeBinary)
-    guid = appDatabase.Column(appDatabase.VARCHAR(255))
-    agreed = appDatabase.Column(appDatabase.Boolean())
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    created = appDB.Column(appDB.DateTime, default=datetime.now)#, onupdate=datetime.now)
+    fname = appDB.Column(appDB.LargeBinary)
+    sname = appDB.Column(appDB.LargeBinary)
+    contact = appDB.Column(appDB.LargeBinary)
+    guid = appDB.Column(appDB.VARCHAR(255))
+    agreed = appDB.Column(appDB.Boolean())
     ##
     # Public methods
     ##
@@ -143,18 +166,18 @@ class DBGuest(appDatabase.Model):
     def entitytype(self):
         return __name__
 
-class DBCheckin(appDatabase.Model):
+class DBCheckin(appDB.Model):
     '''
     checkin/out datatable
     '''
     __tablename__ = 'tbl_checkins'
     __usage__ = 'DBCheckins'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    guid = appDatabase.Column(appDatabase.VARCHAR(255))
-    checkin = appDatabase.Column(appDatabase.DateTime, default=datetime.now)
-    checkout = appDatabase.Column(appDatabase.DateTime, default=None )
-    devision = appDatabase.Column(appDatabase.Integer, default=0)
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    guid = appDB.Column(appDB.VARCHAR(255))
+    checkin = appDB.Column(appDB.DateTime, default=datetime.now)
+    checkout = appDB.Column(appDB.DateTime, default=None )
+    devision = appDB.Column(appDB.Integer, default=0)
     ##
     # Public methods
     ##
@@ -181,16 +204,17 @@ class DBCheckin(appDatabase.Model):
     def entitytype(self):
         return __name__
 
-class DBOrganisations(appDatabase.Model):
+class DBOrganisations(appDB.Model):
     '''
     Organisations databse
     '''
     __tablename__ = 'tbl_organisations'
     __usage__ = 'Organisations'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    name = appDatabase.Column(appDatabase.VARCHAR(255))
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    name = appDB.Column(appDB.VARCHAR(255))
 
+    locations = appDB.relationship('DBLocations')
     ##
     # Public methods
     ##
@@ -216,16 +240,19 @@ class DBOrganisations(appDatabase.Model):
     def entitytype(self):
         return __name__
 
-class DBLocations(appDatabase.Model):
+class DBLocations(appDB.Model):
     '''
     Locations databse
     '''
     __tablename__ = 'tbl_locations'
     __usage__ = 'Locations'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    name = appDatabase.Column(appDatabase.VARCHAR(255))
-    organisation = appDatabase.Column(appDatabase.Integer, default=0)
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    name = appDB.Column(appDB.VARCHAR(255))
+    #organisation = appDB.Column(appDB.Integer, default=0)
+    organisation = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_organisations.id', ondelete='CASCADE'))
+    
+    user = appDB.relationship('User')
     ##
     # Public methods
     ##
@@ -238,7 +265,6 @@ class DBLocations(appDatabase.Model):
         except Exception as e:
             print(e)
 
-        
     def __repr__(self):
         return f'<Location {self.lid}>'
     
@@ -273,32 +299,41 @@ def init_database():
     initialize database and primary user
     '''
     try:
-        appDatabase.drop_all()
-        appDatabase.create_all()
+        appDB.drop_all()
+        appDB.create_all()
     
         # add meta
         meta = ILSCMeta()
-        appDatabase.session.add(meta)
-        appDatabase.session.commit()
+        appDB.session.add(meta)
+        appDB.session.commit()
 
-        dauser = User(username='admin',
+        super_role = Role(name='SuperUser')
+        admin_role = Role(name='UserAdmin')
+        location_role = Role(name='LocationAdmin')
+        scanner_role = Role(name='Scanner')
+        appDB.session.commit()
+
+        firstuser = User(username='admin',
                         password='admin',
                         devision = 0,
                         isadmin = True,
                         do_hash=True)
-        appDatabase.session.add(dauser)
-        appDatabase.session.commit()
+
+        firstuser.roles = [super_role, admin_role, location_role, scanner_role]
+
+        appDB.session.add(firstuser)
+        appDB.session.commit()
 
         organisation = DBOrganisations(oid = 0,
                             name='Mainorganisation')
-        appDatabase.session.add(organisation)
-        appDatabase.session.commit()
+        appDB.session.add(organisation)
+        appDB.session.commit()
 
-        organisation = DBLocations(lid = 0,
+        location = DBLocations(lid = 0,
                             name='Mainlocation',
                             organisation = 0)
-        appDatabase.session.add(organisation)
-        appDatabase.session.commit()
+        appDB.session.add(location)
+        appDB.session.commit()
 
     except Exception as e:
         print(e)

@@ -13,6 +13,7 @@ import logging
 import json
 import ilsc
 
+#from flask_user import current_user, login_required, roles_required, UserManager, UserMixin
 from twisted.internet import reactor, ssl
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
@@ -197,7 +198,7 @@ if not caesar.check_keys_exsist(appConfig.database['privkey'], appConfig.databas
     caesar.generate_keys(appConfig.database['privkey'], appConfig.database['pubkey'])
 
 # finish database initialization
-ilsc.appDatabase.init_app(flaskApp)
+ilsc.appDB.init_app(flaskApp)
 
 # init login manager
 flaskLoginManager = flask_login.LoginManager(flaskApp)
@@ -211,7 +212,7 @@ def unauthorized():
     return flask.redirect(flask.url_for('r_signin'),code=302)
 
 # init backend
-appBackend = ilsc.Backend(appConfig, flaskApp, ilsc.appDatabase, MAGIC_USER_ID)
+appBackend = ilsc.Backend(appConfig, flaskApp, ilsc.appDB, MAGIC_USER_ID)
 
 ##
 # Routing
@@ -298,6 +299,7 @@ def r_signout():
 
 @flaskApp.route('/users')#, methods=['GET','POST'])
 @flask_login.login_required
+#@roles_required('UserAdmin')
 def r_users():
     if not appBackend.is_admin():
         return __render('nope.html')
