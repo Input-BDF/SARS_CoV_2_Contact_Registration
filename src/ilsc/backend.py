@@ -97,7 +97,7 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                _guests = DBCheckin.query.filter_by(checkout=None).order_by(DBCheckin.checkin.desc()).all()
+                _guests = self.appDB.session.query(DBCheckin).filter_by(checkout=None).order_by(DBCheckin.checkin.desc()).all()
 
                 for _guest in _guests:
                     _guest.checkout=datetime.now()
@@ -115,7 +115,7 @@ class Backend(object):
         with self.flaskApp.app_context():
             try:
                 days = int(self.config.app['keepdays'])
-                _query = DBCheckin.query.filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
+                _query = self.appDB.session.query(DBCheckin).filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
                 old_checkins = _query.all()
                 for checkin in old_checkins:
                     self.appDB.session.delete(checkin)
@@ -133,12 +133,12 @@ class Backend(object):
         with self.flaskApp.app_context():
             try:
                 active = []
-                active_checkins = DBCheckin.query.all()
+                active_checkins = self.appDB.session.query(DBCheckin).all()
                 for a in active_checkins:
                     active.append(a.guid)
                 old_guids = DBGuest.guid.notin_(tuple(active))
                 days = int(self.config.app['keepdays'])
-                _query = DBGuest.query.filter(old_guids).filter(DBGuest.created<datetime.now()-timedelta(days=days))
+                _query = self.appDB.session.query(DBGuest).filter(old_guids).filter(DBGuest.created<datetime.now()-timedelta(days=days))
                 remove_guests= _query.all()
                 codes = []
                 for r in remove_guests:
@@ -169,7 +169,7 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                _guests = DBCheckin.query.all()
+                _guests = self.appDB.session.query(DBCheckin).all()
                 _guids = [] 
                 for _guest in _guests:
                     _guids.append(_guest.guid)
@@ -280,7 +280,7 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                _entity = entity.query.filter_by(id=eid).first()
+                _entity = self.appDB.session.query(entity).filter_by(id=eid).first()
                 if not _entity:
                     return False
                 else:
@@ -308,7 +308,7 @@ class Backend(object):
         with self.flaskApp.app_context():
             try:
                 c_str = clean_strings(guid)
-                _guest = DBGuest.query.filter_by(guid=c_str).all()
+                _guest = self.appDB.session.query(DBGuest).filter_by(guid=c_str).all()
                 if not _guest:
                     return False
                 else:
@@ -327,7 +327,7 @@ class Backend(object):
                               DBCheckin.checkin+timedelta(days=1) < datetime.now(),
                               DBCheckin.checkout == None,
                               DBCheckin.devision == devision)
-                _query = DBCheckin.query.filter(lookup).order_by(DBCheckin.checkin.desc())
+                _query = self.appDB.session.query(DBCheckin).filter(lookup).order_by(DBCheckin.checkin.desc())
                 _guest = _query.first()
                 if _guest:
                     return True
@@ -392,7 +392,7 @@ class Backend(object):
                               DBCheckin.checkin+timedelta(days=days)<datetime.now(),
                               DBCheckin.checkout==None,
                               DBCheckin.devision == devision)
-                _query = DBCheckin.query.filter(lookup).order_by(DBCheckin.checkin.desc())
+                _query = self.appDB.session.query(DBCheckin).filter(lookup).order_by(DBCheckin.checkin.desc())
                 _guest = _query.first()
                 if _guest:
                     _guest.checkout=datetime.now()
@@ -406,7 +406,7 @@ class Backend(object):
 
     def add_user(self, username, password, devision, roles = [], isadmin=False, do_hash=True):
         '''
-        add user to database
+        add new user to database
         '''
         #TODO: User Form as passed argument
         try:
@@ -424,39 +424,40 @@ class Backend(object):
 
     def update_user(self, uid, form):
         '''
-        Query Database if guid exists in checkin and update @ checkout time
+        Update user data from form values based on id
         '''
-        with self.flaskApp.app_context():
-            try:
-                #do all database queries before user query or else changes will not be applied
-                all_roles = self.get_all_user_roles(plain=True)
-                selected_roles = form.roles.data if bool(form.roles.data) else []
-                #do all database queries before user query or else changes will not be applied
-                user = User.query.filter_by(id=int(uid)).first()
-                user.username = clean_strings(form.username.data).decode('utf-8')
-                user.devision = int(form.devision.data)
-                if bool(user.roles):
-                    user.roles = []
-                for i in selected_roles:
-                    user.roles.append(all_roles[i-1])
-                #TODO: keep superuser 1 the superuser
-                user.isadmin = True if int(uid) == self.superuser else form.isadmin.data
-                #Need to check if selected roles is empty since then is_modified becomes True
-                if self.appDB.session.is_modified(user):
-                    self.appDB.session.commit()
-                    return True, f'"{user.username}" erfolgreich geändert'
-                return True, f'Für "{user.username}" hat sich nichts geändert.'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
+        try:
+
+            #do all database queries before user query or else changes will not be applied
+            all_roles = self.get_all_user_roles(plain=True)
+            self.appDB.session.close()
+            selected_roles = form.roles.data if bool(form.roles.data) else []
+            #do all database queries before user query or else changes will not be applied
+            user = self.appDB.session.query(User).filter_by(id=int(uid)).first()
+            user.roles = []
+            self.appDB.session.commit()
+            user.username = clean_strings(form.username.data).decode('utf-8')
+            user.devision = int(form.devision.data)
+            for i in selected_roles:
+                user.roles.append(all_roles[i-1])
+            #TODO: keep superuser 1 the superuser
+            #user.isadmin = True if user.id == self.superuser else form.isadmin.data
+            #Need to check if selected roles is empty since then is_modified becomes True
+            if self.appDB.session.is_modified(user):
+                self.appDB.session.commit()
+                return True, f'"{user.username}" erfolgreich geändert'
+            return True, f'Für "{user.username}" hat sich nichts geändert.'
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
             
     def update_password(self, uid, form):
         '''
-        Query Database if guid exists in checkin and update @ checkout time
+        Update user password from form value based on id
         '''
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(id=int(uid)).first()
+                user = self.get_user_by_id(uid=int(uid))
                 user.set_password(form.password.data, do_hash=True)
                 if self.appDB.session.is_modified(user):
                     self.appDB.session.commit()
@@ -466,23 +467,24 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
 
-    def delete_user(self, _userid):
+    def delete_user(self, uid):
         '''
         Delete user from db
         '''
         with self.flaskApp.app_context():
-            user = User.query.filter_by(id=int(_userid)).first()
+            user = self.get_user_by_id(uid=int(uid))
             if user:
                 self.appDB.session.delete(user)
                 self.appDB.session.commit()
 
-    def fetch_user(self, uid):
+    def get_user_by_id(self, uid):
         '''
-        Query Database for user based on guid
+        Query Database for user based on id
         '''
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(id=int(uid)).first()
+                
+                user = self.appDB.session.query(User).filter_by(id=int(uid)).first()
                 if user:
                     return user
                 else:
@@ -492,12 +494,15 @@ class Backend(object):
                 return None
 
     def get_current_user(self):
+        '''
+        Query Database for user based on guid of active user
+        '''
         if not current_user.is_authenticated: return None
         if not flask.session['_user_id']: return None
         
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(userid=str(flask.session['_user_id'])).first()
+                user = self.appDB.session.query(User).filter_by(userid=str(flask.session['_user_id'])).first()
                 if user:
                     return user
                 else:
@@ -510,14 +515,16 @@ class Backend(object):
         Query Database for user location based on uuid
         '''
         try:
-            roles = Roles.query.all()
-            if plain:
-                return roles
-            if roles:
-                all_roles = { r.id : r.name for r in roles }
-                return all_roles
-            else:
-                return []
+            with self.flaskApp.app_context():
+                roles = self.appDB.session.query(Roles).all()
+                self.appDB.session.close()
+                if plain:
+                    return roles
+                if roles:
+                    all_roles = { r.id : r.name for r in roles }
+                    return all_roles
+                else:
+                    return []
         except Exception as e:
             self.logger.debug(e)
             return []
@@ -541,7 +548,7 @@ class Backend(object):
         Query Database for user location based on uuid
         '''
         try:
-            user_roles = self.get_current_user_roles().values()
+            user_roles = self.get_current_user().get_roles().values()
             if user_roles and "SuperUser" in user_roles:
                 return True
             else:
@@ -611,10 +618,10 @@ class Backend(object):
         Query for users belonging to current session user organisation
         '''
         try:
-
+            user = self.get_current_user()
             _locdict = self.get_organisation_locations()
             #users = ilsc.User.query.all()
-            _query = User.query.filter(User.devision.in_(_locdict.keys()))
+            _query = self.appDB.session.query(User).filter(User.devision.in_(_locdict.keys()))
             _users = _query.all()
             if _users:
                 return _users, _locdict
@@ -703,7 +710,7 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                organisation = DBOrganisations.query.filter_by(id=int(oid)).first()
+                organisation = self.appDB.session.query(DBOrganisations).filter_by(id=int(oid)).first()
                 organisation.name = form.name.data #clean_strings(form.name.data).decode('utf-8')
 
                 if self.appDB.session.is_modified(organisation):
@@ -757,7 +764,7 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                location = DBLocations.query.filter_by(id=int(lid)).first()
+                location = self.appDB.session.query(DBLocations).filter_by(id=int(lid)).first()
                 location.name = form.name.data#clean_strings(form.name.data).decode('utf-8')
 
                 if self.appDB.session.is_modified(location):
@@ -856,7 +863,7 @@ class Backend(object):
                 _lookup = and_(DBCheckin.checkin+timedelta(days=1) < datetime.now(),
                               DBCheckin.checkout == None,
                               DBCheckin.devision == devision)
-                _query = DBCheckin.query.filter(_lookup).order_by(DBCheckin.checkin.desc())
+                _query = self.appDB.session.query(DBCheckin).filter(_lookup).order_by(DBCheckin.checkin.desc())
                 _guests = _query.all()
                 return len(_guests)
             except Exception as e:

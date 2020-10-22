@@ -57,7 +57,7 @@ class User(appDB.Model, flask_login.UserMixin):
     userid = appDB.Column(appDB.String(128))
     username = appDB.Column(appDB.String(32), unique=True)
     devision = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_locations.id', ondelete='CASCADE'))
-    isadmin = appDB.Column(appDB.Boolean, default = False)
+    isadmin = appDB.Column(appDB.Boolean, default = False) #DEPRECATED SOON
     salt = appDB.Column(appDB.String(32))
     password = appDB.Column(appDB.String(128))
     created = appDB.Column(appDB.DateTime)
@@ -66,6 +66,8 @@ class User(appDB.Model, flask_login.UserMixin):
     roles = appDB.relationship('Roles', secondary='user_roles',
                                 lazy='subquery',
                                 backref=appDB.backref('user', lazy='dynamic'))
+    
+    location = appDB.relationship('DBLocations', foreign_keys=devision, post_update=True, lazy='subquery')
     ##
     # Public methods
     ##
@@ -74,7 +76,7 @@ class User(appDB.Model, flask_login.UserMixin):
         self.set_username(username)
         self.set_password(password, do_hash)
         self.devision=devision
-        self.isadmin = isadmin
+        self.isadmin = isadmin #DEPRECATED SOON
         self.created = datetime.utcnow()
         self.active = True
 
@@ -94,6 +96,12 @@ class User(appDB.Model, flask_login.UserMixin):
         self.password = password if not do_hash else self.__hash(password.encode('utf-8'), self.salt.encode('utf-8'))
     def validate_password(self, password):
         return (self.password == self.__hash(password.encode('utf-8'), self.salt.encode('utf-8')))
+    
+    def get_roles(self):
+        return { ur.id : ur.name for ur in self.roles }
+    
+    def is_admin(self):
+        return bool(self.get_roles())
     ##
     # Override UserMixin
     ##
@@ -230,7 +238,7 @@ class DBOrganisations(appDB.Model):
 
         
     def __repr__(self):
-        return f'<Organisation {self.guid}>'
+        return f'<Organisation {self.id}>'
     
     def json_serialize(self,*args):
         for a in args:
@@ -268,7 +276,7 @@ class DBLocations(appDB.Model):
             print(e)
 
     def __repr__(self):
-        return f'<Location {self.lid}>'
+        return f'<Location {self.id}>'
     
     def json_serialize(self,*args):
         for a in args:

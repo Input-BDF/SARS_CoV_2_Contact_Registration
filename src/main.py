@@ -148,7 +148,8 @@ def __render(template, **kwargs):
         logging.warning(str(e))
     # pass always config data
     try: 
-        current_user_is_admin = bool(appBackend.get_current_user_roles())
+        user = appBackend.get_current_user()
+        current_user_is_admin = user.is_admin() if user else False
         return flask.render_template(template, config=appConfig.dict(), is_admin = current_user_is_admin, **kwargs)
     except Exception as e:
         logging.error(str(e))
@@ -205,8 +206,9 @@ ilsc.appDB.init_app(flaskApp)
 flaskLoginManager = flask_login.LoginManager(flaskApp)
 
 @flaskLoginManager.user_loader
-def user_loader(userid):
-    return ilsc.User.query.filter_by(userid=userid).first()
+def user_loader(userguid):
+    user = ilsc.User.query.filter_by(userid=userguid).first()
+    return user
 
 @flaskLoginManager.unauthorized_handler
 def unauthorized():
@@ -219,8 +221,7 @@ def check_roles(role=None):
     def wrapper(func):
         @wraps(func)
         def decorated_view(*args, **kwargs):
-
-            user_roles = appBackend.get_current_user_roles().values()
+            user_roles = appBackend.get_current_user().get_roles().values()
             if user_roles and role in user_roles:
                 return func(*args, **kwargs)
             else:
@@ -362,8 +363,9 @@ def r_user_edit(uid):
     _locs = appBackend.get_organisation_locations().items()
     form = ilsc.forms.UserForm()
     form.devision.choices = list(_locs)
-    form.roles.choices = [(k, v) for k,v in appBackend.get_all_user_roles().items() ]
-    user = appBackend.fetch_user(uid)
+    all_user_roles = [(k, v) for k,v in appBackend.get_all_user_roles().items() ]
+    form.roles.choices = all_user_roles
+    user = appBackend.get_user_by_id(uid)
 
     if user and appBackend.check_organisation_permission(user.devision):
         if user.id == MAGIC_USER_ID and not appBackend.check_superuser():
@@ -378,9 +380,8 @@ def r_user_edit(uid):
         
         form = ilsc.forms.UserForm(obj = user)
         form.devision.choices = list(_locs)
-        form.roles.choices = [(k, v) for k,v in appBackend.get_all_user_roles().items() ]
-        form.roles.data = [int(k) for k in appBackend.get_current_user_roles(other_user = user).keys() ]
-        #form.roles.data = [int(k) for k in appBackend.get_current_user_roles().keys() ]
+        form.roles.choices = all_user_roles
+        form.roles.data = [int(k) for k in user.get_roles().keys() ]
         return __render('user_edit.html', form = form, uid=uid, superuser = MAGIC_USER_ID==user.id)
 
     else:
@@ -394,7 +395,7 @@ def r_user_passwd(uid):
     render user edit form
     '''
     form = ilsc.forms.ChangePasswd()
-    user = appBackend.fetch_user(uid)
+    user = appBackend.get_user_by_id(uid)
 
     if user and appBackend.check_organisation_permission(user.devision):
 
@@ -525,8 +526,9 @@ def r_location_add():
     form = ilsc.forms.LocationForm()
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
+        user = appBackend.get_current_user()
         appBackend.add_location(name=form.name.data,
-                        organisation=appBackend.get_current_user_organisation())
+                        organisation=user.location.organisation)
         return flask.redirect(flask.url_for('r_locations'),code=302)
     else:
         return __render('locations_add.html', form = form)
