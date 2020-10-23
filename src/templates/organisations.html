@@ -5,24 +5,22 @@
 		<div id="info" class="{{ t }}">{{ m|safe }}</div>
 	{% endfor %}
 {% endif %}
-<table>
+<table class="optionstable">
 <tbody>
 <tr>
   <th>Organisation</th>
   <th>#Locations</th>
-  <th style="width:5%;">&nbsp;</th>
-  <th style="width:11%;">&nbsp;</th>
+  <th style="width:16%;" colspan="2" class="btn_option"><a href="{{ url_for('r_organisation_add') }}"><button>Add Organisation</button></a></th>
 </tr>
 {% for organisation in organisations %}
 <tr>
   <td>{{ organisation.name }}</td>
-  <td>not implemented</td>
-  <td><a href="{{ url_for('r_organisation_edit', oid=organisation.id) }}"><button>Edit</button></a></td>
-    <td><a href="{{ url_for('r_organisation_delete', oid=organisation.id) }}"><button>Delete</button></a></td>
+  <td>{{ organisation.locations|length }}</td>
+  <td class="btn_option"><a href="{{ url_for('r_organisation_edit', oid=organisation.id) }}"><button>Edit</button></a></td>
+  <td class="btn_option"><a href="{{ url_for('r_organisation_delete', oid=organisation.id) }}"><button>Delete</button></a></td>
 
 </tr>
 {% endfor %}
 </tbody>
 </table>
-<a href="{{ url_for('r_organisation_add') }}"><button>Add Organisation</button></a>
 {% endblock %}

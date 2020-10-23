@@ -9,7 +9,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SelectField, SelectMultipleField, widgets
 
 from wtforms.fields.html5 import DateField
-from wtforms.validators import InputRequired, length, DataRequired, EqualTo, ValidationError
+from wtforms.validators import InputRequired, length, DataRequired, EqualTo, ValidationError, Regexp
 
 #********Forms**********
 class RegisterForm(FlaskForm):
@@ -60,7 +60,7 @@ class UserForm(FlaskForm):
     Basic user edit form
     '''
     username = StringField(label = 'Nutzername',
-                            validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.')],
+                            validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.'), validate_username],
                             filters=(),
                             description='Nutzername',
                             id='username',
@@ -83,7 +83,10 @@ class UserAddForm(UserForm):
     '''
     password = PasswordField('Passwort', validators=[
         DataRequired(),
-        EqualTo('confirm', message='Passwörter müssen übereinstimmen')
+        EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
+        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[\-=@$!%*#?&])[A-Za-z\d@\-=$!%*#?&]{8,}$',
+               message="""Passwort muss mindestens 8 Zeichen lang sein und einen <br/>
+               Buchstaben, eine Zahl und ein Sonderzeichen -=@$!%*#?& enthalten""")
     ])
     confirm = PasswordField('Passwort wiederholen')
     
@@ -103,10 +106,6 @@ class UserAddForm_BCK(FlaskForm):
                             render_kw={'placeholder': 'Nutzername', 'maxlength':'40'}
                             )
     devision = SelectField(label = 'Sektion')
-    password = PasswordField('Passwort', validators=[
-        DataRequired(),
-        EqualTo('confirm', message='Passwörter müssen übereinstimmen')
-    ])
     confirm = PasswordField('Passwort wiederholen')
     roles = SelectMultipleField('Nutzerrollen', 
         coerce=int,
@@ -124,7 +123,10 @@ class ChangePasswd(FlaskForm):
     '''
     password = PasswordField('Passwort', validators=[
         DataRequired(),
-        EqualTo('confirm', message='Passwörter müssen übereinstimmen')
+        EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
+        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[\-=@$!%*#?&])[A-Za-z\d@\-=$!%*#?&]{8,}$',
+               message="""Passwort muss mindestens 8 Zeichen lang sein und einen <br/>
+               Buchstaben, eine Zahl und ein Sonderzeichen -=@$!%*#?& enthalten""")
     ])
     confirm = PasswordField('Passwort wiederholen')
 

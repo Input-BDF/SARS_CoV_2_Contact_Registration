@@ -19,9 +19,9 @@
 					<h2>Cameras</h2><button id="show_cams"></button>
 					<div class="links">
 						<span>{{ location|safe }}: </span><span id="check_count">{{ count }} </span><span class="bio">&#9763;</span>
-						{% if is_admin %}
-						<a href="{{ url_for('r_users') }}">Backend</a>
-						<span class="bio">&#9763;</span>
+						{% if roles %}
+							<a href="{{ target[roles[0]] }}">Backend</a>
+							<span class="bio">&#9763;</span>
 						{% endif %}
 						<a href="{{ url_for('r_signout') }}">Logout</a>
 					</div>

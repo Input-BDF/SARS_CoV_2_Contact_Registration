@@ -105,6 +105,9 @@ class User(appDB.Model, flask_login.UserMixin):
 
     def is_admin(self):
         return bool(self.get_roles())
+
+    def is_superuser(self):
+        return 1 in self.get_roles().keys()
     ##
     # Override UserMixin
     ##

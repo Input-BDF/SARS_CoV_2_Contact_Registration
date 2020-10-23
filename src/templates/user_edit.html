@@ -10,7 +10,7 @@
 		{{ field.label }}
 		{{ field }}
 		{% for error in field.errors %}
-			<ul><li style="color:red;">{{ error }}</li></ul>
+			<ul><li style="color:red;">{{ error|safe }}</li></ul>
 		{% endfor %}
 	{% endfor %}
 	<div id="actions">

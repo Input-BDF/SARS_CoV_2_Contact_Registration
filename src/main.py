@@ -149,8 +149,12 @@ def __render(template, **kwargs):
     # pass always config data
     try: 
         user = appBackend.get_current_user()
-        current_user_is_admin = user.is_admin() if user else False
-        return flask.render_template(template, config=appConfig.dict(), is_admin = current_user_is_admin, **kwargs)
+        return flask.render_template(template,
+                                     #config=appConfig.dict(),
+                                     name = user.username if user else False,
+                                     is_admin = user.is_admin() if user else False,
+                                     roles = list(user.get_roles().keys()) if user else False,
+                                     **kwargs)
     except Exception as e:
         logging.error(str(e))
 
@@ -232,8 +236,10 @@ def check_roles(role=None):
 @flaskApp.context_processor
 def utility_processor():
     def sort_roles(roles):
+        '''
+        sort role objects and return list with role names used in jinja template
+        '''
         resort = sorted(roles, key=lambda r: r.id, reverse=False)
-        #result = ' '.join(list(map(lambda r: r.name[:1],resort)))
         result = list(map(lambda r: r.name, resort))
         return result
     return dict(sort_roles=sort_roles)
@@ -279,6 +285,7 @@ def r_gprd():
 @flask_login.login_required
 def r_scanning():
     try:
+
         loc_id = appBackend.get_current_user_location()
         _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
         _, orgdict = appBackend.fetch_element_lists(ilsc.DBOrganisations)
@@ -289,7 +296,12 @@ def r_scanning():
             return flask.redirect(flask.url_for('r_locations'),code=302)
         location = locdict[str(loc_id)]
         count = appBackend.count_guests(loc_id)
-        return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = loc_id, location = location)
+        target = {1 : flask.url_for('r_guests'),
+                  2 : flask.url_for('r_guests'),
+                  3 : flask.url_for('r_users'),
+                  4 : flask.url_for('r_locations')
+                  }
+        return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = loc_id, location = location, target=target)
     except Exception as e:
         print(e)
 
@@ -352,11 +364,7 @@ def r_user_add():
 
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
-        success, msg = appBackend.add_user(username=form.username.data,
-                        password=form.password.data,
-                        devision = form.devision.data,
-                        roles = form.roles.data,
-                        do_hash=True)
+        success, msg = appBackend.add_user(form)
         if success:
             flask.session['messages'] = json.dumps({"success": msg})
         else:
@@ -372,16 +380,19 @@ def r_user_edit(uid):
     '''
     render user edit form
     '''
-    _all_roles = ilsc.Roles.get_roles_dict()
-
     _user = appBackend.get_user_by_id(uid)
-
     if _user and appBackend.check_organisation_permission(_user.devision):
+        redirect = flask.redirect(flask.url_for('r_users'),code=302)
+        if _user.is_superuser() and not appBackend.get_current_user().is_superuser():
+            return redirect
+        if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
+            return redirect
         #TODO: fetch not from Backend but directly from organisation somehow
         _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
     
-        form = ilsc.forms.UserForm(ilsc.User.check_duplicate)
+        form = ilsc.forms.UserForm(ilsc.User.check_duplicate, obj = _user)
         form.devision.choices = list(_locs)
+        _all_roles = ilsc.Roles.get_roles_dict()
         form.roles.choices = _all_roles
 
         if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
@@ -393,11 +404,6 @@ def r_user_edit(uid):
             else:
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_users'),code=302)
-
-        #need to reinit form or else role data is not stored somehow
-        form = ilsc.forms.UserForm(ilsc.User.check_duplicate, obj = _user)
-        form.devision.choices = list(_locs)
-        form.roles.choices = _all_roles
         form.roles.data = [int(k) for k in _user.get_roles().keys() ]
 
         return __render('user_edit.html', form = form, superuser = MAGIC_USER_ID==_user.id, action = flask.url_for('r_user_edit', uid=uid))
@@ -405,30 +411,32 @@ def r_user_edit(uid):
     else:
         return flask.redirect(flask.url_for('r_users'),code=302)
 
-@flaskApp.route('/user/password/<uid>', methods=['GET', 'POST'])
+@flaskApp.route('/_user/password/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
 @check_roles(role='UserAdmin')
 def r_user_passwd(uid):
     '''
-    render user edit form
+    render _user edit form
     '''
-    form = ilsc.forms.ChangePasswd()
-    user = appBackend.get_user_by_id(uid)
+    _user = appBackend.get_user_by_id(uid)
 
-    if user and appBackend.check_organisation_permission(user.devision):
-
-        if user.id == MAGIC_USER_ID and not appBackend.check_superuser():
-            return flask.redirect(flask.url_for('r_users'),code=302)
+    if _user and appBackend.check_organisation_permission(_user.devision):
+        redirect = flask.redirect(flask.url_for('r_users'),code=302)
+        if _user.is_superuser() and not appBackend.get_current_user().is_superuser():
+            return redirect
+        if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
+            return redirect
+        form = ilsc.forms.ChangePasswd()
         if 'POST' == flask.request.method and form.validate_on_submit():
-            success, msg = appBackend.update_password(user.id, form)
+            success, msg = appBackend.update_password(_user.id, form)
             if success:
                 flask.session['messages'] = json.dumps({"success": msg})
             else:
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_users'),code=302)
         
-        form = ilsc.forms.ChangePasswd(obj = user)
-        return __render('user_edit.html', form = form, superuser = MAGIC_USER_ID==user.id, action = flask.url_for('r_user_passwd', uid=uid))
+        form = ilsc.forms.ChangePasswd(obj = _user)
+        return __render('user_edit.html', form = form, superuser = MAGIC_USER_ID==_user.id, action = flask.url_for('r_user_passwd', uid=uid))
     else:
         return flask.redirect(flask.url_for('r_users'),code=302)
 
@@ -439,25 +447,20 @@ def r_user_delete(uid):
     '''
     render user delete form
     '''
-    form = None
-    return __render('user_delete.html', form = form, uid=uid)
-
-@flaskApp.route('/user-remove', methods=['POST'])
-@flask_login.login_required
-@check_roles(role='UserAdmin')
-def r_user_remove():
-    '''
-    remove user
-    '''
-    try:
-        _userid = flask.request.form['userid'] if 'userid' in flask.request.form else 0
-        if MAGIC_USER_ID == int(_userid): raise ValueError('user id=%s is protected' % str(_userid))
-        if appBackend.delete_user(_userid):
-            return flask.redirect(flask.url_for('r_users'),code=302)
+    _user = appBackend.get_user_by_id(uid)
+    if _user and appBackend.check_organisation_permission(_user.devision):
+        redirect = flask.redirect(flask.url_for('r_users'),code=302)
+        if _user.id == MAGIC_USER_ID:
+            return redirect
+        redirect = flask.redirect(flask.url_for('r_users'),code=302)
+        if _user.is_superuser() and not appBackend.get_current_user().is_superuser():
+            return redirect
+        if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
+            return redirect
+        form = None
+        return __render('user_delete.html', form = form, uid=uid)
+    else:
         return flask.redirect(flask.url_for('r_users'),code=302)
-    except Exception as e:
-        logging.warning(str(e))
-    return ('', 204)
 
 @flaskApp.route('/organisations')#, methods=['GET','POST'])
 @flask_login.login_required

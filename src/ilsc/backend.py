@@ -405,19 +405,22 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00002) beim Checkout. Oder der wurde grad schon ausgecheckt'
 
-    def add_user(self, username, password, devision, roles = [], do_hash=True):
+    def add_user(self, form, do_hash=True):
         '''
         add new user to database
         '''
         #TODO: User Form as passed argument
         try:
-            with self.flaskApp.app_context():
-                new_user = User(username, password, devision, do_hash=do_hash)
-                all_roles = self.get_all_user_roles(plain=True)
-                for i in roles:
-                    new_user.roles.append(all_roles[i-1])
-                self.appDB.session.add(new_user)
-                self.appDB.session.commit()
+            username=form.username.data
+            password=form.password.data
+            devision = form.devision.data
+            selected_roles = form.roles.data if bool(form.roles.data) else []
+            selected_roles.sort()
+            new_roles = Roles.get_roles_by_ids(selected_roles)
+            new_user = User(username, password, devision, do_hash=do_hash)
+            new_user.roles.extend(new_roles)
+            self.appDB.session.add(new_user)
+            self.appDB.session.commit()
             return True, f'Nutzer "{username}" wurde angelegt'
         except exc.IntegrityError as ie:
             return False, f'Integrity-Error. Code: {ie.code}. Benutzername existiert bereits.'
@@ -430,15 +433,11 @@ class Backend(object):
         Update user data from form values based on id
         '''
         try:
-
-            #do all database queries before user query or else changes will not be applied
-            #FIXME: Bring this to the end
-            #self.appDB.session.close()
             selected_roles = form.roles.data if bool(form.roles.data) else []
             selected_roles.sort()
             new_roles = Roles.get_roles_by_ids(selected_roles)
 
-            user = self.appDB.session.query(User).filter_by(id=int(uid)).first()
+            user = self.get_user_by_id(uid=int(uid))
             user.username = clean_strings(form.username.data).decode('utf-8')
             user.devision = int(form.devision.data)
 
@@ -459,43 +458,42 @@ class Backend(object):
         '''
         Update user password from form value based on id
         '''
-        with self.flaskApp.app_context():
-            try:
-                user = self.get_user_by_id(uid=int(uid))
-                user.set_password(form.password.data, do_hash=True)
-                if self.appDB.session.is_modified(user):
-                    self.appDB.session.commit()
-                    return True, f'"{user.username}" erfolgreich geändert'
-                return True, f'Für "{user.username}" hat sich nichts geändert.'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
+        try:
+            user = self.get_user_by_id(uid=int(uid))
+            user.set_password(form.password.data, do_hash=True)
+            if self.appDB.session.is_modified(user):
+                #user.password = '123456'
+                self.appDB.session.commit()
+                
+            return True, f'Passwort für "{user.username}" erfolgreich geändert'
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
 
     def delete_user(self, uid):
         '''
         Delete user from db
         '''
-        with self.flaskApp.app_context():
-            user = self.get_user_by_id(uid=int(uid))
-            if user:
-                self.appDB.session.delete(user)
-                self.appDB.session.commit()
+        #with self.flaskApp.app_context():
+        user = self.get_user_by_id(uid=int(uid))
+        if user:
+            self.appDB.session.delete(user)
+            self.appDB.session.commit()
 
     def get_user_by_id(self, uid):
         '''
         Query Database for user based on id
         '''
-        with self.flaskApp.app_context():
-            try:
-                
-                user = self.appDB.session.query(User).filter_by(id=int(uid)).first()
-                if user:
-                    return user
-                else:
-                    return None
-            except Exception as e:
-                self.logger.debug(e)
+        try:
+            
+            user = self.appDB.session.query(User).filter_by(id=int(uid)).first()
+            if user:
+                return user
+            else:
                 return None
+        except Exception as e:
+            self.logger.debug(e)
+            return None
 
     def get_current_user(self):
         '''
@@ -504,15 +502,14 @@ class Backend(object):
         if not current_user.is_authenticated: return None
         if not flask.session['_user_id']: return None
         
-        with self.flaskApp.app_context():
-            try:
-                user = self.appDB.session.query(User).filter_by(userid=str(flask.session['_user_id'])).first()
-                if user:
-                    return user
-                else:
-                    return None
-            except Exception as e:
-                self.logger.debug(e)
+        try:
+            user = self.appDB.session.query(User).filter_by(userid=str(flask.session['_user_id'])).first()
+            if user:
+                return user
+            else:
+                return None
+        except Exception as e:
+            self.logger.debug(e)
 
     def get_all_user_roles(self, plain = False):
         '''

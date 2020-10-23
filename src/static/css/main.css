@@ -355,3 +355,9 @@ vertical-align: top;
 	padding:0px;
 }
 .roletitle { cursor: help;}
+.btn_option > a,
+.btn_option > a > button {
+	display: block;
+	width: 100%;
+}
+.optionstable {width: 100%;}

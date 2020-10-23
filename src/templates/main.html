@@ -22,14 +22,23 @@
 						<span class="bio">&#9763;</span>
 						<a href="{{ url_for('r_scanning') }}">Scan</a>
 						<span class="bio">&#9763;</span>
+						{% if 2 in roles or 1 in roles %}
 						<a href="{{ url_for('r_guests') }}">G&auml;ste</a>
 						<span class="bio">&#9763;</span>
+						{% endif %}
+						{% if 3 in roles or 1 in roles  %}
 						<a href="{{ url_for('r_users') }}">User</a>
 						<span class="bio">&#9763;</span>
+						{% endif %}
+						{% if 4 in roles or 1 in roles  %}
 						<a href="{{ url_for('r_locations') }}">Locations</a>
 						<span class="bio">&#9763;</span>
-						<a href="{{ url_for('r_signout') }}">Logout</a>
+						{% endif %}
+						{% if 1 in roles %}
+						<a href="{{ url_for('r_organisations') }}">Organisations</a>
 						<span class="bio">&#9763;</span>
+						{% endif %}
+						<a href="{{ url_for('r_signout') }}">Logout ({{ name }})</a>
 					</div>
 				{% endif %}
 				<div id="content">
