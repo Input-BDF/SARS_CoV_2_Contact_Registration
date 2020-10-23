@@ -181,6 +181,10 @@ div.checkbox label input {
 	font-weight:bolder;
 }
 
+#actions {
+	margin-top: 20px;
+}
+
 #info {
 	text-align: center;
 	padding: 5px;
@@ -350,3 +354,4 @@ vertical-align: top;
 	cursor: pointer;
 	padding:0px;
 }
+.roletitle { cursor: help;}

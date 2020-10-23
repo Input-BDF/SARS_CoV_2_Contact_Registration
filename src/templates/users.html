@@ -20,8 +20,8 @@
   <td>{{ user.username }}</td>
   <td>{{ loc[user.devision|string] }}</td>
   <td>
-  {% for role in user.roles %}
-      <span title="{{ role.name }}">{{ role.name[:1] }}</span>
+  {% for role in sort_roles(user.roles) %}
+      <span class="roletitle" title="{{ role }}">{{ role[:1]  }}</span>
   {% endfor %}
   </td>
   <td><a href="{{ url_for('r_user_edit', uid=user.id) }}"><button>Edit</button></a></td>

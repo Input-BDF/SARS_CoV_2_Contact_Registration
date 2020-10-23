@@ -18,6 +18,7 @@ from flask_login import current_user
 from twisted.web.server import Site
 from autobahn.twisted.resource import WebSocketResource, Resource
 from sqlalchemy import and_, between
+from sqlalchemy import exc
 from datetime import datetime, timedelta
 from .websocket import *
 
@@ -404,20 +405,22 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00002) beim Checkout. Oder der wurde grad schon ausgecheckt'
 
-    def add_user(self, username, password, devision, roles = [], isadmin=False, do_hash=True):
+    def add_user(self, username, password, devision, roles = [], do_hash=True):
         '''
         add new user to database
         '''
         #TODO: User Form as passed argument
         try:
             with self.flaskApp.app_context():
-                new_user = User(username, password, devision, isadmin=isadmin, do_hash=do_hash)
+                new_user = User(username, password, devision, do_hash=do_hash)
                 all_roles = self.get_all_user_roles(plain=True)
                 for i in roles:
                     new_user.roles.append(all_roles[i-1])
                 self.appDB.session.add(new_user)
                 self.appDB.session.commit()
-            return True, ''
+            return True, f'Nutzer "{username}" wurde angelegt'
+        except exc.IntegrityError as ie:
+            return False, f'Integrity-Error. Code: {ie.code}. Benutzername existiert bereits.'
         except Exception as e:
             self.logger.debug(e)
             return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
@@ -429,17 +432,18 @@ class Backend(object):
         try:
 
             #do all database queries before user query or else changes will not be applied
-            all_roles = self.get_all_user_roles(plain=True)
-            self.appDB.session.close()
+            #FIXME: Bring this to the end
+            #self.appDB.session.close()
             selected_roles = form.roles.data if bool(form.roles.data) else []
-            #do all database queries before user query or else changes will not be applied
+            selected_roles.sort()
+            new_roles = Roles.get_roles_by_ids(selected_roles)
+
             user = self.appDB.session.query(User).filter_by(id=int(uid)).first()
-            user.roles = []
-            self.appDB.session.commit()
             user.username = clean_strings(form.username.data).decode('utf-8')
             user.devision = int(form.devision.data)
-            for i in selected_roles:
-                user.roles.append(all_roles[i-1])
+
+            user.roles.clear()
+            user.roles.extend(new_roles)
             #TODO: keep superuser 1 the superuser
             #user.isadmin = True if user.id == self.superuser else form.isadmin.data
             #Need to check if selected roles is empty since then is_modified becomes True
@@ -517,7 +521,7 @@ class Backend(object):
         try:
             with self.flaskApp.app_context():
                 roles = self.appDB.session.query(Roles).all()
-                self.appDB.session.close()
+                #self.appDB.session.close()
                 if plain:
                     return roles
                 if roles:
@@ -571,11 +575,6 @@ class Backend(object):
             self.logger.debug(e)
             return None
 
-    def get_current_user_organisation(self):
-        _u_loc = self.get_current_user_location()
-        _u_org = self.get_location_organisation(_u_loc)
-        return _u_org
-
     def get_location_organisation(self, lid):
         '''
         return organisation associated to given location id
@@ -583,21 +582,19 @@ class Backend(object):
         oid = self.fetch_element_by_id(DBLocations, lid)
         return oid.organisation if oid else None
 
-    def get_organisation_locations(self):
+    def get_organisation_locations(self, orgid):
         '''
         Query Database for locations by organisation id
         '''
         with self.flaskApp.app_context():
             try:
-                _u_loc = self.get_current_user_location()
-                _u_org = self.get_location_organisation(_u_loc)
 
                 eid = DBLocations.id.label("id")
                 name = DBLocations.name.label("name")
                 #org = element.name.label("organisation")
 
                 _query = self.appDB.session.query(eid, name)\
-                                        .filter_by(organisation=_u_org)\
+                                        .filter_by(organisation=orgid)\
                                         .order_by(eid)
                 elements = _query.all()
 
@@ -619,9 +616,9 @@ class Backend(object):
         '''
         try:
             user = self.get_current_user()
-            _locdict = self.get_organisation_locations()
+            _locdict = self.get_organisation_locations(user.location.organisation)
             #users = ilsc.User.query.all()
-            _query = self.appDB.session.query(User).filter(User.devision.in_(_locdict.keys()))
+            _query = self.appDB.session.query(User).filter(User.devision.in_(_locdict.keys())).order_by(User.username)
             _users = _query.all()
             if _users:
                 return _users, _locdict

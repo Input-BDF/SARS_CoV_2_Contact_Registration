@@ -228,6 +228,15 @@ def check_roles(role=None):
                 return __render('nope.html')
         return decorated_view
     return wrapper
+
+@flaskApp.context_processor
+def utility_processor():
+    def sort_roles(roles):
+        resort = sorted(roles, key=lambda r: r.id, reverse=False)
+        #result = ' '.join(list(map(lambda r: r.name[:1],resort)))
+        result = list(map(lambda r: r.name, resort))
+        return result
+    return dict(sort_roles=sort_roles)
 # init backend
 appBackend = ilsc.Backend(appConfig, flaskApp, ilsc.appDB, MAGIC_USER_ID)
 
@@ -333,25 +342,28 @@ def r_user_add():
     '''
     render user add form
     '''
-    #loclist, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
-    _locs = appBackend.get_organisation_locations().items()
-    form = ilsc.forms.UserAddForm()
+    _user = appBackend.get_current_user()
+    _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
+
+    form = ilsc.forms.UserAddForm(ilsc.User.check_duplicate)
     form.devision.choices = list(_locs)
     form.roles.choices = [(k, v) for k,v in appBackend.get_all_user_roles().items() ]
 
 
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
-        appBackend.add_user(username=form.username.data,
+        success, msg = appBackend.add_user(username=form.username.data,
                         password=form.password.data,
                         devision = form.devision.data,
                         roles = form.roles.data,
-                        isadmin = form.isadmin.data,
                         do_hash=True)
+        if success:
+            flask.session['messages'] = json.dumps({"success": msg})
+        else:
+            flask.session['messages'] = json.dumps({"error": msg})
         return flask.redirect(flask.url_for('r_users'),code=302)
     else:
-        return __render('user_add.html', form = form)#, choices = _locs)
-    #return __render('user_add.html', form = form, choices = _locs)
+        return __render('user_edit.html', form = form, action = flask.url_for('r_user_add'))
 
 @flaskApp.route('/user/edit/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -360,29 +372,35 @@ def r_user_edit(uid):
     '''
     render user edit form
     '''
-    _locs = appBackend.get_organisation_locations().items()
-    form = ilsc.forms.UserForm()
-    form.devision.choices = list(_locs)
-    all_user_roles = [(k, v) for k,v in appBackend.get_all_user_roles().items() ]
-    form.roles.choices = all_user_roles
-    user = appBackend.get_user_by_id(uid)
+    _all_roles = ilsc.Roles.get_roles_dict()
 
-    if user and appBackend.check_organisation_permission(user.devision):
-        if user.id == MAGIC_USER_ID and not appBackend.check_superuser():
+    _user = appBackend.get_user_by_id(uid)
+
+    if _user and appBackend.check_organisation_permission(_user.devision):
+        #TODO: fetch not from Backend but directly from organisation somehow
+        _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
+    
+        form = ilsc.forms.UserForm(ilsc.User.check_duplicate)
+        form.devision.choices = list(_locs)
+        form.roles.choices = _all_roles
+
+        if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
             return flask.redirect(flask.url_for('r_users'),code=302)
         if 'POST' == flask.request.method and form.validate_on_submit():
-            success, msg = appBackend.update_user(user.id, form)
+            success, msg = appBackend.update_user(_user.id, form)
             if success:
                 flask.session['messages'] = json.dumps({"success": msg})
             else:
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_users'),code=302)
-        
-        form = ilsc.forms.UserForm(obj = user)
+
+        #need to reinit form or else role data is not stored somehow
+        form = ilsc.forms.UserForm(ilsc.User.check_duplicate, obj = _user)
         form.devision.choices = list(_locs)
-        form.roles.choices = all_user_roles
-        form.roles.data = [int(k) for k in user.get_roles().keys() ]
-        return __render('user_edit.html', form = form, uid=uid, superuser = MAGIC_USER_ID==user.id)
+        form.roles.choices = _all_roles
+        form.roles.data = [int(k) for k in _user.get_roles().keys() ]
+
+        return __render('user_edit.html', form = form, superuser = MAGIC_USER_ID==_user.id, action = flask.url_for('r_user_edit', uid=uid))
 
     else:
         return flask.redirect(flask.url_for('r_users'),code=302)
@@ -410,7 +428,7 @@ def r_user_passwd(uid):
             return flask.redirect(flask.url_for('r_users'),code=302)
         
         form = ilsc.forms.ChangePasswd(obj = user)
-        return __render('user_password.html', form = form, uid=uid, superuser = MAGIC_USER_ID==user.id)
+        return __render('user_edit.html', form = form, superuser = MAGIC_USER_ID==user.id, action = flask.url_for('r_user_passwd', uid=uid))
     else:
         return flask.redirect(flask.url_for('r_users'),code=302)
 
@@ -512,7 +530,9 @@ def r_locations():
     '''
     location overview page
     '''
-    _locs = appBackend.get_organisation_locations()
+    _user = appBackend.get_current_user()
+    _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
+
     msg = check_messages()
     return __render('locations.html', locations=_locs, msg=msg)#, org = orgdict)
 
@@ -526,9 +546,9 @@ def r_location_add():
     form = ilsc.forms.LocationForm()
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
-        user = appBackend.get_current_user()
+        _user = appBackend.get_current_user()
         appBackend.add_location(name=form.name.data,
-                        organisation=user.location.organisation)
+                        organisation=_user.location.organisation)
         return flask.redirect(flask.url_for('r_locations'),code=302)
     else:
         return __render('locations_add.html', form = form)
@@ -577,7 +597,8 @@ def r_guests():
     display all guest at given day
     '''
     guests = []
-    _locs = appBackend.get_organisation_locations()
+    _user = appBackend.get_current_user()
+    _locs = appBackend.get_organisation_locations(_user.location.organisation)
     form = ilsc.forms.DateForm()
     if form.validate_on_submit():
         date = form.visitdate.data#.strftime('%Y-%m-%d')

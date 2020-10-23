@@ -57,7 +57,6 @@ class User(appDB.Model, flask_login.UserMixin):
     userid = appDB.Column(appDB.String(128))
     username = appDB.Column(appDB.String(32), unique=True)
     devision = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_locations.id', ondelete='CASCADE'))
-    isadmin = appDB.Column(appDB.Boolean, default = False) #DEPRECATED SOON
     salt = appDB.Column(appDB.String(32))
     password = appDB.Column(appDB.String(128))
     created = appDB.Column(appDB.DateTime)
@@ -71,12 +70,11 @@ class User(appDB.Model, flask_login.UserMixin):
     ##
     # Public methods
     ##
-    def __init__(self, username, password, devision=0, salt=None, isadmin = False, do_hash=True):
+    def __init__(self, username, password, devision=0, salt=None, do_hash=True):
         self.salt = salt if salt else self.__salt()
         self.set_username(username)
         self.set_password(password, do_hash)
         self.devision=devision
-        self.isadmin = isadmin #DEPRECATED SOON
         self.created = datetime.utcnow()
         self.active = True
 
@@ -92,14 +90,19 @@ class User(appDB.Model, flask_login.UserMixin):
     def set_username(self, username):
         self.username = username
         self.userid = self.__hash(username.encode('utf-8'), self.salt.encode('utf-8'))
+
     def set_password(self, password, do_hash=True):
         self.password = password if not do_hash else self.__hash(password.encode('utf-8'), self.salt.encode('utf-8'))
+
     def validate_password(self, password):
         return (self.password == self.__hash(password.encode('utf-8'), self.salt.encode('utf-8')))
     
     def get_roles(self):
         return { ur.id : ur.name for ur in self.roles }
-    
+
+    def set_roles(self):
+        pass
+
     def is_admin(self):
         return bool(self.get_roles())
     ##
@@ -107,6 +110,12 @@ class User(appDB.Model, flask_login.UserMixin):
     ##
     def get_id(self):
         return self.userid
+    
+    @staticmethod
+    def check_duplicate(needle):
+        _result = appDB.session.query(User).filter_by(username=needle).first()
+        if _result: return True
+        return False
     ##
     # Private methods
     ##
@@ -124,6 +133,21 @@ class Roles(appDB.Model):
     __tablename__ = 'roles'
     id = appDB.Column(appDB.Integer(), primary_key=True)
     name = appDB.Column(appDB.String(50), unique=True)
+
+    @staticmethod
+    def get_roles():
+        return appDB.session.query(Roles).order_by(Roles.id).all()
+
+    @staticmethod
+    def get_roles_dict():
+        return [(r.id, r.name) for r in Roles.get_roles() ]
+
+    @staticmethod
+    def get_roles_by_ids(ids):
+        if ids:
+            roles = appDB.session.query(Roles).filter(Roles.id.in_(ids)).order_by(Roles.id).all()
+            if roles: return roles
+        return []
 
 class UserRoles(appDB.Model):
     '''
@@ -262,7 +286,7 @@ class DBLocations(appDB.Model):
     #organisation = appDB.Column(appDB.Integer, default=0)
     organisation = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_organisations.id', ondelete='CASCADE'))
     
-    user = appDB.relationship('User')
+    #user = appDB.relationship('User')
     ##
     # Public methods
     ##
@@ -326,7 +350,6 @@ def init_database():
         firstuser = User(username='admin',
                         password='admin',
                         devision = 0,
-                        isadmin = True,
                         do_hash=True)
 
         firstuser.roles = [super_role, visit_role, admin_role, location_role]
