@@ -212,11 +212,15 @@ div.checkbox label input {
 }
 
 #header h1 {
-	background-color:rgba(255,255,255,0.8);
 	color:#d46a6a;
 	text-align:center;
+	margin: 0px;
 }
 
+#header h1 img {
+	width: auto;
+	max-height: 123px;
+	}
 form#regform {
 	margin:auto;
 	max-width:425px;

@@ -3,7 +3,7 @@
 	<head>
 		<meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<link rel="shortcut icon" href="{{ url_for('static', filename='images/ilsc_32x32.png') }}" type="image/png">
+		<link rel="shortcut icon" href="{{ url_for('static', filename='images/racoon_32x32.png') }}" type="image/png">
 		<title>ILSC e.V. Checkin</title>
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" type="text/css" media="screen" />
 		{% if request.endpoint == 'r_getqr' %}
@@ -15,7 +15,7 @@
 		<div id="topbg"></div>
 			<div id="main">
 				<div id="header">
-					<h1>ILSC e.V. Checkin</h1>
+					<h1><img src="{{ url_for('static', filename='images/racoontrace.png') }}"/></h1>
 				</div>
 				{% if is_admin %}
 					<div id="menu">
