@@ -634,7 +634,10 @@ def r_guests():
     '''
     guests = []
     _user = appBackend.get_current_user()
-    _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
+    if 'o' in flask.session.keys() and _user.is_superuser():
+        _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
+    else:
+        _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
     form = ilsc.forms.DateForm()
     _locs = {-1 : 'Alle'}
     _locs.update(_locs_dict)
@@ -661,7 +664,10 @@ def r_visits(guid):
     '''
     visits = []
     _user = appBackend.get_current_user()
-    _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
+    if 'o' in flask.session.keys() and _user.is_superuser():
+        _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
+    else:
+        _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
     form = ilsc.forms.DateForm()
     _locs = {-1 : 'Alle'}
     _locs.update(_locs_dict)
