@@ -20,6 +20,7 @@ __all__ = [
     'check_database',
     'init_database'
 ]
+
 import uuid, hashlib
 #import flask_sqlalchemy
 import flask_login
@@ -97,8 +98,8 @@ class User(appDB.Model, flask_login.UserMixin):
     def validate_password(self, password):
         return (self.password == self.__hash(password.encode('utf-8'), self.salt.encode('utf-8')))
     
-    def get_roles(self):
-        return { ur.id : ur.name for ur in self.roles }
+    def get_roles(self, exclude = -1):
+        return { ur.id : ur.name for ur in self.roles if ur != exclude }
 
     def set_roles(self):
         pass
@@ -142,8 +143,8 @@ class Roles(appDB.Model):
         return appDB.session.query(Roles).order_by(Roles.id).all()
 
     @staticmethod
-    def get_roles_dict():
-        return [(r.id, r.name) for r in Roles.get_roles() ]
+    def get_roles_pairs(exclude = -1):
+        return [(r.id, r.name) for r in Roles.get_roles() if r.id != exclude]
 
     @staticmethod
     def get_roles_by_ids(ids):
@@ -249,7 +250,7 @@ class DBOrganisations(appDB.Model):
     __usage__ = 'Organisations'
     # Columns
     id = appDB.Column(appDB.Integer, primary_key=True)
-    name = appDB.Column(appDB.VARCHAR(255))
+    name = appDB.Column(appDB.VARCHAR(255), unique=True)
 
     locations = appDB.relationship('DBLocations')
     ##
@@ -276,6 +277,12 @@ class DBOrganisations(appDB.Model):
     
     def entitytype(self):
         return __name__
+
+    @staticmethod
+    def check_duplicate(needle):
+        _result = appDB.session.query(DBOrganisations).filter_by(name=needle).first()
+        if _result: return True
+        return False
 
 class DBLocations(appDB.Model):
     '''

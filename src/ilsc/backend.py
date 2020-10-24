@@ -22,7 +22,7 @@ from sqlalchemy import exc
 from datetime import datetime, timedelta
 from .websocket import *
 
-from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, UserRoles
+from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles
 from ilsc import caesar
 
 from bs4 import BeautifulSoup
@@ -413,10 +413,16 @@ class Backend(object):
         try:
             username=form.username.data
             password=form.password.data
-            devision = form.devision.data
-            selected_roles = form.roles.data if bool(form.roles.data) else []
-            selected_roles.sort()
-            new_roles = Roles.get_roles_by_ids(selected_roles)
+            if form.devision != None:
+                devision = form.devision.data
+            else:
+                devision = form.location_id
+            if form.roles != None:
+                selected_roles = form.roles.data if bool(form.roles.data) else []
+                selected_roles.sort()
+                new_roles = Roles.get_roles_by_ids(selected_roles) 
+            else:
+                new_roles =  Roles.get_roles_by_ids(form.role_list)
             new_user = User(username, password, devision, do_hash=do_hash)
             new_user.roles.extend(new_roles)
             self.appDB.session.add(new_user)
@@ -529,6 +535,7 @@ class Backend(object):
         except Exception as e:
             self.logger.debug(e)
             return []
+
     def get_current_user_roles(self, other_user = None):
         '''
         Query Database for user location based on uuid
@@ -579,6 +586,18 @@ class Backend(object):
         oid = self.fetch_element_by_id(DBLocations, lid)
         return oid.organisation if oid else None
 
+    def get_organisations(self):
+        try:
+            orgs = DBOrganisations.query.all()
+            if orgs:
+                all_orgs = { o.id : o.name for o in orgs }
+                return all_orgs
+            else:
+                return []
+        except Exception as e:
+            self.logger.debug(e)
+            return []
+
     def get_organisation_locations(self, orgid):
         '''
         Query Database for locations by organisation id
@@ -607,13 +626,12 @@ class Backend(object):
                 self.logger.debug(e)
                 return {}
 
-    def get_organisation_users(self):
+    def get_organisation_users(self, uid):
         '''
         Query for users belonging to current session user organisation
         '''
         try:
-            user = self.get_current_user()
-            _locdict = self.get_organisation_locations(user.location.organisation)
+            _locdict = self.get_organisation_locations(uid)
             #users = ilsc.User.query.all()
             _query = self.appDB.session.query(User).filter(User.devision.in_(_locdict.keys())).order_by(User.username)
             _users = _query.all()
@@ -655,17 +673,26 @@ class Backend(object):
                 self.logger.debug(e)
                 return None
 
-    def add_organisation(self, name):
+    def add_organisation(self, form):
         '''
         add user to database
         '''
         try:
-            with self.flaskApp.app_context():
-                new_org = DBOrganisations(name)
-                self.appDB.session.add(new_org)
-                self.appDB.session.commit()
-                #TODO: add default location
-                #Todo: add default admin
+            #with self.flaskApp.app_context():
+            new_org = DBOrganisations(form.name.data)
+            self.appDB.session.add(new_org)
+            self.appDB.session.flush()
+            self.appDB.session.commit()
+            
+            #Dont use self.add_location to retrieve locationid better
+            new_loc = DBLocations(form.locationname.data, new_org.id)
+            self.appDB.session.add(new_loc)
+            self.appDB.session.flush()
+            self.appDB.session.commit()
+            form.location_id = new_loc.id
+            #TODO: bring get_all_user_roles together with other stuff
+            form.role_list = [k for k in self.get_all_user_roles().keys() if k != 1 ] 
+            self.add_user(form)
             return True, ''
         except Exception as e:
             self.logger.debug(e)
@@ -747,7 +774,7 @@ class Backend(object):
                 new_loc = DBLocations(name, int(organisation))
                 self.appDB.session.add(new_loc)
                 self.appDB.session.commit()
-            return True, ''
+            return True, f'"{name}" erfolgreich hinzugefügt.'
         except Exception as e:
             self.logger.debug(e)
             return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'

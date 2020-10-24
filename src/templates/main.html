@@ -38,6 +38,10 @@
 						<a href="{{ url_for('r_organisations') }}">Organisations</a>
 						<span class="bio">&#9763;</span>
 						{% endif %}
+						{% if 1 in roles %}
+						<a href="{{ url_for('r_organisation_switch') }}">Switch Org</a>
+						<span class="bio">&#9763;</span>
+						{% endif %}
 						<a href="{{ url_for('r_signout') }}">Logout ({{ name }})</a>
 					</div>
 				{% endif %}

@@ -4,13 +4,28 @@ Created on 06.06.2020
 
 @author: Input
 '''
+
+__all__ = [
+    # classes
+    'RegisterForm',
+    'UserForm',
+    'UserAddForm',
+    'ChangePasswd',
+    'DateForm',
+    'LocationForm',
+    'OrganisationForm',
+    'OrganisationRegForm',
+    'OrganisationSwitchForm'
+]
+
 from datetime import date
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SelectField, SelectMultipleField, widgets
 
+from wtforms.compat import itervalues
 from wtforms.fields.html5 import DateField
 from wtforms.validators import InputRequired, length, DataRequired, EqualTo, ValidationError, Regexp
-
+from collections import OrderedDict
 #********Forms**********
 class RegisterForm(FlaskForm):
     '''
@@ -41,6 +56,7 @@ class RegisterForm(FlaskForm):
                          '<a href="https://corona.thueringen.de/behoerden/ausgewaehlte-verordnungen" target="_blank">Thüringer'\
                          ' Verordnung zur Neuordnung der erforderlichen Maßnahmen zur Eindämmung der Ausbreitung des Coronavirus SARS-CoV-2</a> zu.',
                          validators=[InputRequired(message='Bitte Zustimmung geben')])
+
 class MultiCheckboxField(SelectMultipleField):
     '''
     class to provide multiple options checkbox field
@@ -48,19 +64,19 @@ class MultiCheckboxField(SelectMultipleField):
     widget = widgets.ListWidget(prefix_label=False)
     option_widget = widgets.CheckboxInput()
 
-def validate_username(form, field):
+def validate_unique(form, field):
     '''
     validator to check if username already exists
     '''
-    if form.user_check(field.data) and field.object_data != field.data:
-        raise ValidationError(f'Benutzername "{field.data}" existiert bereits.')
+    if form.dup_check(field.data) and field.object_data != field.data:
+        raise ValidationError(f'"{field.data}" existiert bereits.')
 
 class UserForm(FlaskForm):
     '''
     Basic user edit form
     '''
     username = StringField(label = 'Nutzername',
-                            validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.'), validate_username],
+                            validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.'), validate_unique],
                             filters=(),
                             description='Nutzername',
                             id='username',
@@ -72,10 +88,14 @@ class UserForm(FlaskForm):
         option_widget=widgets.CheckboxInput(), 
         widget=widgets.ListWidget(prefix_label=False) )
 
-    def __init__(self, user_usercheck, choices = [], obj = None):
+    def __init__(self, dup_check=None, choices = [], obj = None):
+        '''
+        dup_check > callback to database object to check duplicate names
+        '''
         super().__init__(obj = obj)
-        self.devision.choices = choices
-        self.user_check = user_usercheck
+        if self.devision:
+            self.devision.choices = choices
+        self.dup_check = dup_check
 
 class UserAddForm(UserForm):
     '''
@@ -84,38 +104,14 @@ class UserAddForm(UserForm):
     password = PasswordField('Passwort', validators=[
         DataRequired(),
         EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
-        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[\-=@$!%*#?&])[A-Za-z\d@\-=$!%*#?&]{8,}$',
+        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[_\-=@$!%*#?&])[A-Za-z\d@_\-=$!%*#?&]{8,}$',
                message="""Passwort muss mindestens 8 Zeichen lang sein und einen <br/>
-               Buchstaben, eine Zahl und ein Sonderzeichen -=@$!%*#?& enthalten""")
+               Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten""")
     ])
     confirm = PasswordField('Passwort wiederholen')
     
-    def __init__(self, user_usercheck, choices = [], obj = None):
-        super().__init__(user_usercheck, choices=choices, obj = obj)
-
-#TODO: inherit from UserForm
-class UserAddForm_BCK(FlaskForm):
-    '''
-    User add form
-    '''
-    username = StringField(label = 'Nutzername',
-                            validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.'), validate_username],
-                            filters=(),
-                            description='Nutzername',
-                            id='username',
-                            render_kw={'placeholder': 'Nutzername', 'maxlength':'40'}
-                            )
-    devision = SelectField(label = 'Sektion')
-    confirm = PasswordField('Passwort wiederholen')
-    roles = SelectMultipleField('Nutzerrollen', 
-        coerce=int,
-        option_widget=widgets.CheckboxInput(), 
-        widget=widgets.ListWidget(prefix_label=False) )
-    
-    def __init__(self, user_usercheck, choices = [], obj = None):
-        super().__init__(obj = obj)
-        self.devision.choices = choices
-        self.user_check = user_usercheck
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 class ChangePasswd(FlaskForm):
     '''
@@ -124,9 +120,9 @@ class ChangePasswd(FlaskForm):
     password = PasswordField('Passwort', validators=[
         DataRequired(),
         EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
-        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[\-=@$!%*#?&])[A-Za-z\d@\-=$!%*#?&]{8,}$',
+        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[_\-=@$!%*#?&])[A-Za-z\d@_\-=$!%*#?&]{8,}$',
                message="""Passwort muss mindestens 8 Zeichen lang sein und einen <br/>
-               Buchstaben, eine Zahl und ein Sonderzeichen -=@$!%*#?& enthalten""")
+               Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten""")
     ])
     confirm = PasswordField('Passwort wiederholen')
 
@@ -145,21 +141,6 @@ class DateForm(FlaskForm):
             return result
     '''
 
-class OrganisationForm(FlaskForm):
-    '''
-    ogranisation edit form
-    '''
-    name = StringField(label = 'Organisation',
-                            validators=[InputRequired(message='Bitte Namen eingeben'), length(max=256, message='Maximal 256 Zeichen erlaubt.')],
-                            filters=(),
-                            description='Organisationsname',
-                            id='orgname',
-                            render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
-                            )
-    
-    def __init__(self, obj = None):
-        super().__init__(obj = obj)
-
 class LocationForm(FlaskForm):
     '''
     location edit form
@@ -172,5 +153,60 @@ class LocationForm(FlaskForm):
                             render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
                             )
 
-    def __init__(self, obj = None):
-        super().__init__(obj = obj)
+    def __init__(self, obj = None, *arg, **kwargs):
+        super().__init__(obj = obj, *arg, **kwargs)
+
+class OrganisationForm(FlaskForm):
+    '''
+    ogranisation edit form
+    '''
+    name = StringField(label = 'Organisation',
+                            validators=[InputRequired(message='Bitte Namen eingeben'), length(max=256, message='Maximal 256 Zeichen erlaubt.'), validate_unique],
+                            filters=(),
+                            description='Organisationsname',
+                            id='orgname',
+                            render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
+                            )
+    
+    def __init__(self, dup_check = None, obj = None):
+        '''
+        dup_check > callback to database object to check duplicate names
+        '''
+        super().__init__(dup_check = dup_check, obj = obj)
+        self.dup_check = dup_check
+
+class OrganisationSwitchForm(FlaskForm):
+    '''
+    simple form for organisation switching
+    '''
+    organisation = SelectField(label = 'Organisation', coerce=int)
+
+    def __init__(self, *arg, **kwargs):
+        super().__init__(*arg, **kwargs)
+
+class OrganisationRegForm(OrganisationForm, UserAddForm):
+    '''
+    Combined form to create Organisation and User 
+    '''
+    locationname = StringField(label = 'Location',
+                        validators=[InputRequired(message='Bitte Namen eingeben'), length(max=256, message='Maximal 256 Zeichen erlaubt.'), validate_unique],
+                        filters=(),
+                        description='Locationname',
+                        id='locname',
+                        render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
+                        )
+    devision = None
+    roles = None
+
+    __order = ['csrf_token', 'name', 'locationname', 'username', 'password', 'confirm']
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.location_id = 0
+        self.role_list = 0 
+        
+    def __iter__(self):
+        '''
+        reorder form fields based on __order
+        '''
+        __ordered = OrderedDict([(k, self._fields[k]) for k in self.__order])
+        return iter(itervalues(__ordered))

@@ -343,7 +343,11 @@ def r_users():
     '''
     render user overview
     '''
-    _users, _lcodict = appBackend.get_organisation_users()
+    _user = appBackend.get_current_user()
+    if 'o' in flask.session.keys() and _user.is_superuser():
+        _users, _lcodict = appBackend.get_organisation_users(int(flask.session['o']))
+    else:
+        _users, _lcodict = appBackend.get_organisation_users(_user.location.organisation)
     msg = check_messages()
     return __render('users.html', users=_users, msg=msg, loc=_lcodict)
 
@@ -355,12 +359,15 @@ def r_user_add():
     render user add form
     '''
     _user = appBackend.get_current_user()
-    _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
+    if appBackend.get_current_user().is_superuser() and 'o' in flask.session.keys():
+        _locs = appBackend.get_organisation_locations(int(flask.session['o'])).items()
+    else:
+        _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
 
-    form = ilsc.forms.UserAddForm(ilsc.User.check_duplicate)
+    form = ilsc.forms.UserAddForm(dup_check = ilsc.User.check_duplicate)
     form.devision.choices = list(_locs)
-    form.roles.choices = [(k, v) for k,v in appBackend.get_all_user_roles().items() ]
-
+    exclude = -1 if appBackend.get_current_user().is_superuser() else 1
+    form.roles.choices = ilsc.Roles.get_roles_pairs(exclude)
 
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
@@ -371,7 +378,9 @@ def r_user_add():
             flask.session['messages'] = json.dumps({"error": msg})
         return flask.redirect(flask.url_for('r_users'),code=302)
     else:
-        return __render('user_edit.html', form = form, action = flask.url_for('r_user_add'))
+        return __render('user_edit.html',
+                        form = form,
+                        action = flask.url_for('r_user_add'))
 
 @flaskApp.route('/user/edit/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -381,7 +390,7 @@ def r_user_edit(uid):
     render user edit form
     '''
     _user = appBackend.get_user_by_id(uid)
-    if _user and appBackend.check_organisation_permission(_user.devision):
+    if _user and appBackend.check_organisation_permission(_user.devision) or ( appBackend.get_current_user().is_superuser() ):
         redirect = flask.redirect(flask.url_for('r_users'),code=302)
         if _user.is_superuser() and not appBackend.get_current_user().is_superuser():
             return redirect
@@ -390,10 +399,10 @@ def r_user_edit(uid):
         #TODO: fetch not from Backend but directly from organisation somehow
         _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
     
-        form = ilsc.forms.UserForm(ilsc.User.check_duplicate, obj = _user)
+        form = ilsc.forms.UserForm(dup_check = ilsc.User.check_duplicate, obj = _user)
         form.devision.choices = list(_locs)
-        _all_roles = ilsc.Roles.get_roles_dict()
-        form.roles.choices = _all_roles
+        exclude = -1 if appBackend.get_current_user().is_superuser() else 1
+        form.roles.choices = ilsc.Roles.get_roles_pairs(exclude)
 
         if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
             return flask.redirect(flask.url_for('r_users'),code=302)
@@ -406,7 +415,11 @@ def r_user_edit(uid):
             return flask.redirect(flask.url_for('r_users'),code=302)
         form.roles.data = [int(k) for k in _user.get_roles().keys() ]
 
-        return __render('user_edit.html', form = form, superuser = MAGIC_USER_ID==_user.id, action = flask.url_for('r_user_edit', uid=uid))
+        return __render('user_edit.html',
+                        form = form,
+                        superuser = MAGIC_USER_ID==_user.id,
+                        action = flask.url_for('r_user_edit', uid=uid),
+                        goback = flask.url_for('r_users'))
 
     else:
         return flask.redirect(flask.url_for('r_users'),code=302)
@@ -419,8 +432,7 @@ def r_user_passwd(uid):
     render _user edit form
     '''
     _user = appBackend.get_user_by_id(uid)
-
-    if _user and appBackend.check_organisation_permission(_user.devision):
+    if _user and appBackend.check_organisation_permission(_user.devision) or ( appBackend.get_current_user().is_superuser() ):
         redirect = flask.redirect(flask.url_for('r_users'),code=302)
         if _user.is_superuser() and not appBackend.get_current_user().is_superuser():
             return redirect
@@ -436,7 +448,11 @@ def r_user_passwd(uid):
             return flask.redirect(flask.url_for('r_users'),code=302)
         
         form = ilsc.forms.ChangePasswd(obj = _user)
-        return __render('user_edit.html', form = form, superuser = MAGIC_USER_ID==_user.id, action = flask.url_for('r_user_passwd', uid=uid))
+        return __render('user_edit.html',
+                        form = form,
+                        superuser = MAGIC_USER_ID==_user.id,
+                        action = flask.url_for('r_user_passwd',
+                        uid=uid))
     else:
         return flask.redirect(flask.url_for('r_users'),code=302)
 
@@ -480,14 +496,13 @@ def r_organisation_add():
     '''
     render organisation add form
     '''
-    form = ilsc.forms.OrganisationForm()
+    form = ilsc.forms.OrganisationRegForm(dup_check = ilsc.DBOrganisations.check_duplicate)
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
-        appBackend.add_organisation(name=form.name.data)
+        appBackend.add_organisation(form)
         return flask.redirect(flask.url_for('r_organisations'),code=302)
     else:
-        return __render('organisations_add.html', form = form)
-    return __render('organisations_add.html', form = form)
+        return __render('organisations_edit.html', form=form, action=flask.url_for('r_organisation_add'))
 
 @flaskApp.route('/organisation/edit/<oid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -497,7 +512,7 @@ def r_organisation_edit(oid):
     render organisation edit form
     '''
 
-    form = ilsc.forms.OrganisationForm()
+    form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate)
     organisation = appBackend.fetch_element_by_id(ilsc.DBOrganisations, oid)
 
     if organisation:
@@ -509,11 +524,26 @@ def r_organisation_edit(oid):
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_organisations'),code=302)
         
-        form = ilsc.forms.OrganisationForm(obj = organisation)
-        return __render('organisations_edit.html', form = form, oid=oid)
+        form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate, obj = organisation)
+        return __render('organisations_edit.html', form=form, action=flask.url_for('r_organisation_edit', oid=oid))
 
     else:
         return flask.redirect(flask.url_for('r_users'),code=302)
+
+@flaskApp.route('/organisation/switch', methods=['GET', 'POST'])
+@flask_login.login_required
+@check_roles(role='SuperUser')
+def r_organisation_switch():
+    form = ilsc.forms.OrganisationSwitchForm()
+    _orgs = appBackend.get_organisations().items()
+    form.organisation.choices = list(_orgs)
+    if 'POST' == flask.request.method and form.validate_on_submit():
+        flask.session['o'] = form.organisation.data
+        flask.session['messages'] = json.dumps({"success": 'Switched Organisation'})
+        return flask.redirect(flask.url_for('r_users'),code=302)
+    if 'o' in flask.session.keys():
+        form.organisation.data = int(flask.session['o'])
+    return __render('organisations_switch.html', form=form)
 
 @flaskApp.route('/organisation/delete/<oid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -522,9 +552,8 @@ def r_organisation_delete(oid):
     '''
     location delete form
     '''
-
     form = None
-    return __render('not_implemented.html', form = form, oid=oid)
+    return __render('organisations_switch.html', form=form)
 
 @flaskApp.route('/locations')#, methods=['GET','POST'])
 @flask_login.login_required
@@ -534,7 +563,10 @@ def r_locations():
     location overview page
     '''
     _user = appBackend.get_current_user()
-    _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
+    if 'o' in flask.session.keys() and _user.is_superuser():
+        _locs = appBackend.get_organisation_locations(int(flask.session['o'])).items()
+    else:
+        _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
 
     msg = check_messages()
     return __render('locations.html', locations=_locs, msg=msg)#, org = orgdict)
@@ -549,9 +581,16 @@ def r_location_add():
     form = ilsc.forms.LocationForm()
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
-        _user = appBackend.get_current_user()
-        appBackend.add_location(name=form.name.data,
-                        organisation=_user.location.organisation)
+        if appBackend.get_current_user().is_superuser() and 'o' in flask.session.keys():
+            _org = int(flask.session['o'])
+        else: 
+            _org = appBackend.get_current_user().location.organisation
+        success, msg = appBackend.add_location(name=form.name.data,
+                        organisation=_org)
+        if success:
+            flask.session['messages'] = json.dumps({"success": msg})
+        else:
+            flask.session['messages'] = json.dumps({"error": msg})
         return flask.redirect(flask.url_for('r_locations'),code=302)
     else:
         return __render('locations_add.html', form = form)
@@ -566,8 +605,7 @@ def r_location_edit(lid):
     '''
     form = ilsc.forms.LocationForm()
     location = appBackend.fetch_element_by_id(ilsc.DBLocations, lid)
-
-    if location and appBackend.check_organisation_permission(lid):
+    if ( location and appBackend.check_organisation_permission(lid) ) or ( appBackend.get_current_user().is_superuser() ):
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_location(location.id, form)
             if success:

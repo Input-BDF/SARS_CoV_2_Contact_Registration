@@ -112,7 +112,9 @@ form#regform #warning {
 form#regform #warning a{
 	color: #f00;
 	}
-	
+
+
+form#orgform > label,
 form#userform > label,
 form#regform > label {
 	display: block;
