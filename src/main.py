@@ -218,7 +218,7 @@ def user_loader(userguid):
 def unauthorized():
     return flask.redirect(flask.url_for('r_signin'),code=302)
 
-def check_roles(role=None):
+def check_roles(roles=None):
     '''
     custom login_required decorator
     '''
@@ -226,7 +226,8 @@ def check_roles(role=None):
         @wraps(func)
         def decorated_view(*args, **kwargs):
             user_roles = appBackend.get_current_user().get_roles().values()
-            if user_roles and role in user_roles:
+            #if user_roles and role in user_roles:
+            if user_roles and any(r in roles  for r in user_roles):
                 return func(*args, **kwargs)
             else:
                 return __render('nope.html')
@@ -285,23 +286,17 @@ def r_gprd():
 @flask_login.login_required
 def r_scanning():
     try:
+        _user = appBackend.get_current_user()
+        _loc_id = _user.location.id
+        _loc_name = _user.location.name
 
-        loc_id = appBackend.get_current_user_location()
-        _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
-        _, orgdict = appBackend.fetch_element_lists(ilsc.DBOrganisations)
-
-        if not bool(orgdict):
-            return flask.redirect(flask.url_for('r_organisations'),code=302)
-        if not bool(locdict):
-            return flask.redirect(flask.url_for('r_locations'),code=302)
-        location = locdict[str(loc_id)]
-        count = appBackend.count_guests(loc_id)
+        count = appBackend.count_guests(_loc_id)
         target = {1 : flask.url_for('r_guests'),
                   2 : flask.url_for('r_guests'),
                   3 : flask.url_for('r_users'),
                   4 : flask.url_for('r_locations')
                   }
-        return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = loc_id, location = location, target=target)
+        return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = _loc_id, location = _loc_name, target=target)
     except Exception as e:
         print(e)
 
@@ -338,7 +333,7 @@ def r_signout():
 
 @flaskApp.route('/users')#, methods=['GET','POST'])
 @flask_login.login_required
-@check_roles(role='UserAdmin')
+@check_roles(roles=['UserAdmin'])
 def r_users():
     '''
     render user overview
@@ -353,7 +348,7 @@ def r_users():
 
 @flaskApp.route('/user/add', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='UserAdmin')
+@check_roles(roles=['UserAdmin'])
 def r_user_add():
     '''
     render user add form
@@ -384,7 +379,7 @@ def r_user_add():
 
 @flaskApp.route('/user/edit/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='UserAdmin')
+@check_roles(roles=['UserAdmin'])
 def r_user_edit(uid):
     '''
     render user edit form
@@ -426,7 +421,7 @@ def r_user_edit(uid):
 
 @flaskApp.route('/_user/password/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='UserAdmin')
+@check_roles(roles=['UserAdmin'])
 def r_user_passwd(uid):
     '''
     render _user edit form
@@ -458,7 +453,7 @@ def r_user_passwd(uid):
 
 @flaskApp.route('/user/delete/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='UserAdmin')
+@check_roles(roles=['UserAdmin'])
 def r_user_delete(uid):
     '''
     render user delete form
@@ -480,7 +475,7 @@ def r_user_delete(uid):
 
 @flaskApp.route('/organisations')#, methods=['GET','POST'])
 @flask_login.login_required
-@check_roles(role='SuperUser')
+@check_roles(roles=['SuperUser'])
 def r_organisations():
     '''
     render organisation overview page
@@ -491,7 +486,7 @@ def r_organisations():
 
 @flaskApp.route('/organisation/add', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='SuperUser')
+@check_roles(roles=['SuperUser'])
 def r_organisation_add():
     '''
     render organisation add form
@@ -506,7 +501,7 @@ def r_organisation_add():
 
 @flaskApp.route('/organisation/edit/<oid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='SuperUser')
+@check_roles(roles=['SuperUser'])
 def r_organisation_edit(oid):
     '''
     render organisation edit form
@@ -532,7 +527,7 @@ def r_organisation_edit(oid):
 
 @flaskApp.route('/organisation/switch', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='SuperUser')
+@check_roles(roles=['SuperUser'])
 def r_organisation_switch():
     form = ilsc.forms.OrganisationSwitchForm()
     _orgs = appBackend.get_organisations().items()
@@ -547,7 +542,7 @@ def r_organisation_switch():
 
 @flaskApp.route('/organisation/delete/<oid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='SuperUser')
+@check_roles(roles=['SuperUser'])
 def r_organisation_delete(oid):
     '''
     location delete form
@@ -557,7 +552,7 @@ def r_organisation_delete(oid):
 
 @flaskApp.route('/locations')#, methods=['GET','POST'])
 @flask_login.login_required
-@check_roles(role='LocationAdmin')
+@check_roles(roles=['LocationAdmin'])
 def r_locations():
     '''
     location overview page
@@ -573,7 +568,7 @@ def r_locations():
 
 @flaskApp.route('/location/add', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='LocationAdmin')
+@check_roles(roles=['LocationAdmin'])
 def r_location_add():
     '''
     render location add form
@@ -598,7 +593,7 @@ def r_location_add():
 
 @flaskApp.route('/locations/edit/<lid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='LocationAdmin')
+@check_roles(roles=['LocationAdmin'])
 def r_location_edit(lid):
     '''
     location edit form
@@ -622,7 +617,7 @@ def r_location_edit(lid):
 
 @flaskApp.route('/user/delete/<lid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(role='LocationAdmin')
+@check_roles(roles=['LocationAdmin'])
 def r_location_delete(lid):
     '''
     location delete form
@@ -632,33 +627,48 @@ def r_location_delete(lid):
 
 @flaskApp.route('/guests', methods=['GET','POST'])
 @flask_login.login_required
-@check_roles(role='VisitorAdmin')
+@check_roles(roles=['VisitorAdmin'])
 def r_guests():
     '''
     display all guest at given day
     '''
     guests = []
     _user = appBackend.get_current_user()
-    _locs = appBackend.get_organisation_locations(_user.location.organisation)
+    _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
     form = ilsc.forms.DateForm()
-    if form.validate_on_submit():
+    _locs = {-1 : 'Alle'}
+    _locs.update(_locs_dict)
+    form.location.choices = list(_locs.items())
+    if 'POST' == flask.request.method:# and form.validate_on_submit():
         date = form.visitdate.data#.strftime('%Y-%m-%d')
-        guests = appBackend.fetch_guests(date, locations = _locs.keys())
+        loc = form.location.data
+        if loc == int(-1) or loc == None:
+            guests = appBackend.fetch_guests(date, locations = _locs_dict.keys())
+        else:
+            guests = appBackend.fetch_guests(date, locations = [loc,])
+        return __render('guests.html', form=form, guests=guests, loc = _locs)
+    form.location.data = -1
+    date = form.visitdate.data
+    guests = appBackend.fetch_guests(date, locations = _locs.keys())
     return __render('guests.html', form=form, guests=guests, loc = _locs)
 
 @flaskApp.route('/visits/<guid>', methods=['GET'])
 @flask_login.login_required
-@check_roles(role='VisitorAdmin')
+@check_roles(roles=['VisitorAdmin'])
 def r_visits(guid):
     '''
     display all visits by guid
     '''
     visits = []
-    _, locdict = appBackend.fetch_element_lists(ilsc.DBLocations)
+    _user = appBackend.get_current_user()
+    _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
     form = ilsc.forms.DateForm()
+    _locs = {-1 : 'Alle'}
+    _locs.update(_locs_dict)
+    form.location.choices = list(_locs.items())
     if appBackend.check_guid(guid):
-        visits = appBackend.fetch_visits(guid)
-    return __render('visits.html', form=form, visits=visits, loc = locdict)
+        visits = appBackend.fetch_visits(guid,_locs.keys())
+    return __render('visits.html', form=form, visits=visits, loc = _locs)
 
 @flaskApp.errorhandler(404)
 def r_page_not_found(error):

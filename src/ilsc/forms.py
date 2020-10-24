@@ -131,7 +131,7 @@ class DateForm(FlaskForm):
     simple Select date form
     '''
     visitdate = DateField('Datum', format='%Y-%m-%d', default=date.today())
-    
+    location = SelectField(label = 'Location')
     '''
     def validate_on_submit(self):
         result = super(TestForm, self).validate()

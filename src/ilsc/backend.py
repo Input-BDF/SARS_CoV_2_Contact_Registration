@@ -699,6 +699,7 @@ class Backend(object):
             return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
 
     def fetch_element_lists(self, element):
+        #REMINDER: keep this function for debug queries
         '''
         Query Database for connections via type
         '''
@@ -817,7 +818,7 @@ class Backend(object):
                                                             between(checkin, start, end),
                                                             devision.in_(locations)
                                                             ))\
-                                               .order_by(checkin)
+                                               .order_by(devision, checkin)
                 guests = _query.all()
 
                 if guests:
@@ -891,7 +892,7 @@ class Backend(object):
                 self.logger.debug(e)
                 return 0
 
-    def fetch_visits(self,guid):
+    def fetch_visits(self,guid,locations):
         '''
         Query Database for guest visits
         '''
@@ -903,7 +904,9 @@ class Backend(object):
                 _devision = DBCheckin.devision.label("devision")
 
                 _query = self.appDB.session.query(_guestuid, _checkin, _checkout, _devision)\
-                                               .filter(_guestuid == guid.encode('utf-8'))\
+                                               .filter(and_(_guestuid == guid.encode('utf-8'),
+                                                           DBCheckin.devision.in_(locations))
+                                                      )\
                                                .order_by(_checkin)
                 visits = _query.all()
 

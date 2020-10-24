@@ -363,3 +363,7 @@ vertical-align: top;
 	width: 100%;
 }
 .optionstable {width: 100%;}
+
+#usertable tr:hover,
+#orgtable tr:hover,
+#loctable tr:hover { background-color: #222;}
