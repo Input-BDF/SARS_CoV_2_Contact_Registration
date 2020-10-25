@@ -11,7 +11,7 @@ __all__ = [
     'UserForm',
     'UserAddForm',
     'ChangePasswd',
-    'DateForm',
+    'DateLocForm',
     'LocationForm',
     'OrganisationForm',
     'OrganisationRegForm',
@@ -21,7 +21,6 @@ __all__ = [
 from datetime import date
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SelectField, SelectMultipleField, widgets
-
 from wtforms.compat import itervalues
 from wtforms.fields.html5 import DateField
 from wtforms.validators import InputRequired, length, DataRequired, EqualTo, ValidationError, Regexp
@@ -71,12 +70,19 @@ def validate_unique(form, field):
     if form.dup_check(field.data) and field.object_data != field.data:
         raise ValidationError(f'"{field.data}" existiert bereits.')
 
+def validate_unique_usr(form, field):
+    '''
+    validator to check if username already exists
+    '''
+    if form.usr_dup_check(field.data) and field.object_data != field.data:
+        raise ValidationError(f'"{field.data}" existiert bereits.')
+
 class UserForm(FlaskForm):
     '''
     Basic user edit form
     '''
     username = StringField(label = 'Nutzername',
-                            validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.'), validate_unique],
+                            validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.'), validate_unique_usr],
                             filters=(),
                             description='Nutzername',
                             id='username',
@@ -88,14 +94,15 @@ class UserForm(FlaskForm):
         option_widget=widgets.CheckboxInput(), 
         widget=widgets.ListWidget(prefix_label=False) )
 
-    def __init__(self, dup_check=None, choices = [], obj = None):
+    def __init__(self, usr_dup_check=None, choices=[], obj=None, *args, **kwargs):
         '''
-        dup_check > callback to database object to check duplicate names
+        usr_dup_check > callback to database object to check duplicate names
         '''
         super().__init__(obj = obj)
         if self.devision:
             self.devision.choices = choices
-        self.dup_check = dup_check
+        if usr_dup_check:
+            self.usr_dup_check = usr_dup_check
 
 class UserAddForm(UserForm):
     '''
@@ -126,20 +133,18 @@ class ChangePasswd(FlaskForm):
     ])
     confirm = PasswordField('Passwort wiederholen')
 
-class DateForm(FlaskForm):
+class DateLocForm(FlaskForm):
     '''
-    simple Select date form
+    Select date and location form
     '''
-    visitdate = DateField('Datum', format='%Y-%m-%d', default=date.today())
+    visitdate = DateField('Datum', format='%Y-%m-%d')
     location = SelectField(label = 'Location')
-    '''
-    def validate_on_submit(self):
-        result = super(TestForm, self).validate()
-        if (self.startdate.data>self.enddate.data):
-            return False
-        else:
-            return result
-    '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.visitdate.data:
+            self.visitdate.data = date.today()
+        self.visitdate.default = date.today()
 
 class LocationForm(FlaskForm):
     '''
@@ -168,12 +173,13 @@ class OrganisationForm(FlaskForm):
                             render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
                             )
     
-    def __init__(self, dup_check = None, obj = None):
+    def __init__(self, dup_check = None, obj = None, *arg, **kwargs):
         '''
         dup_check > callback to database object to check duplicate names
         '''
         super().__init__(dup_check = dup_check, obj = obj)
-        self.dup_check = dup_check
+        if dup_check:
+            self.dup_check = dup_check
 
 class OrganisationSwitchForm(FlaskForm):
     '''
@@ -199,8 +205,10 @@ class OrganisationRegForm(OrganisationForm, UserAddForm):
     roles = None
 
     __order = ['csrf_token', 'name', 'locationname', 'username', 'password', 'confirm']
-    def __init__(self, *args, **kwargs):
+    def __init__(self, dup_check = None, usr_dup_check = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.usr_dup_check = usr_dup_check
+        self.dup_check = dup_check
         self.location_id = 0
         self.role_list = 0 
         

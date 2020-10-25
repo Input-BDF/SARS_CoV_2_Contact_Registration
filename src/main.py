@@ -13,12 +13,14 @@ import logging
 import json
 import ilsc
 
+from datetime import date
 from twisted.internet import reactor, ssl
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
-from ilsc import caesar
 from apscheduler.schedulers.background import BackgroundScheduler
 from functools import wraps
+
+from ilsc import caesar
 
 try:
     import urlparse
@@ -333,7 +335,7 @@ def r_signout():
 
 @flaskApp.route('/users')#, methods=['GET','POST'])
 @flask_login.login_required
-@check_roles(roles=['UserAdmin'])
+@check_roles(roles=['SuperUser', 'UserAdmin'])
 def r_users():
     '''
     render user overview
@@ -348,7 +350,7 @@ def r_users():
 
 @flaskApp.route('/user/add', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(roles=['UserAdmin'])
+@check_roles(roles=['SuperUser', 'UserAdmin'])
 def r_user_add():
     '''
     render user add form
@@ -359,7 +361,7 @@ def r_user_add():
     else:
         _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
 
-    form = ilsc.forms.UserAddForm(dup_check = ilsc.User.check_duplicate)
+    form = ilsc.forms.UserAddForm(usr_dup_check = ilsc.User.check_duplicate)
     form.devision.choices = list(_locs)
     exclude = -1 if appBackend.get_current_user().is_superuser() else 1
     form.roles.choices = ilsc.Roles.get_roles_pairs(exclude)
@@ -379,7 +381,7 @@ def r_user_add():
 
 @flaskApp.route('/user/edit/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(roles=['UserAdmin'])
+@check_roles(roles=['SuperUser', 'UserAdmin'])
 def r_user_edit(uid):
     '''
     render user edit form
@@ -394,7 +396,7 @@ def r_user_edit(uid):
         #TODO: fetch not from Backend but directly from organisation somehow
         _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
     
-        form = ilsc.forms.UserForm(dup_check = ilsc.User.check_duplicate, obj = _user)
+        form = ilsc.forms.UserForm(usr_dup_check = ilsc.User.check_duplicate, obj = _user)
         form.devision.choices = list(_locs)
         exclude = -1 if appBackend.get_current_user().is_superuser() else 1
         form.roles.choices = ilsc.Roles.get_roles_pairs(exclude)
@@ -421,7 +423,7 @@ def r_user_edit(uid):
 
 @flaskApp.route('/_user/password/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(roles=['UserAdmin'])
+@check_roles(roles=['SuperUser', 'UserAdmin'])
 def r_user_passwd(uid):
     '''
     render _user edit form
@@ -453,7 +455,7 @@ def r_user_passwd(uid):
 
 @flaskApp.route('/user/delete/<uid>', methods=['GET', 'POST'])
 @flask_login.login_required
-@check_roles(roles=['UserAdmin'])
+@check_roles(roles=['SuperUser', 'UserAdmin'])
 def r_user_delete(uid):
     '''
     render user delete form
@@ -491,7 +493,8 @@ def r_organisation_add():
     '''
     render organisation add form
     '''
-    form = ilsc.forms.OrganisationRegForm(dup_check = ilsc.DBOrganisations.check_duplicate)
+    form = ilsc.forms.OrganisationRegForm(dup_check = ilsc.DBOrganisations.check_duplicate,
+                                          usr_dup_check = ilsc.User.check_duplicate)
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
         appBackend.add_organisation(form)
@@ -507,10 +510,9 @@ def r_organisation_edit(oid):
     render organisation edit form
     '''
 
-    form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate)
     organisation = appBackend.fetch_element_by_id(ilsc.DBOrganisations, oid)
-
     if organisation:
+        form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate, obj=organisation)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_organisation(organisation.id, form)
             if success:
@@ -519,7 +521,7 @@ def r_organisation_edit(oid):
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_organisations'),code=302)
         
-        form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate, obj = organisation)
+        #form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate, obj = organisation)
         return __render('organisations_edit.html', form=form, action=flask.url_for('r_organisation_edit', oid=oid))
 
     else:
@@ -638,21 +640,21 @@ def r_guests():
         _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
     else:
         _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
-    form = ilsc.forms.DateForm()
+    form = ilsc.forms.DateLocForm()
     _locs = {-1 : 'Alle'}
     _locs.update(_locs_dict)
     form.location.choices = list(_locs.items())
     if 'POST' == flask.request.method:# and form.validate_on_submit():
-        date = form.visitdate.data#.strftime('%Y-%m-%d')
-        loc = form.location.data
-        if loc == int(-1) or loc == None:
-            guests = appBackend.fetch_guests(date, locations = _locs_dict.keys())
+        day = form.visitdate.data#.strftime('%Y-%m-%d')
+        loc = int(form.location.data)
+        if loc == -1 or loc == None:
+            guests = appBackend.fetch_guests(day, locations = _locs_dict.keys())
         else:
-            guests = appBackend.fetch_guests(date, locations = [loc,])
+            guests = appBackend.fetch_guests(day, locations = [loc,])
         return __render('guests.html', form=form, guests=guests, loc = _locs)
     form.location.data = -1
-    date = form.visitdate.data
-    guests = appBackend.fetch_guests(date, locations = _locs.keys())
+    day = form.visitdate.data
+    guests = appBackend.fetch_guests(day, locations = _locs.keys())
     return __render('guests.html', form=form, guests=guests, loc = _locs)
 
 @flaskApp.route('/visits/<guid>', methods=['GET'])
@@ -668,7 +670,7 @@ def r_visits(guid):
         _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
     else:
         _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
-    form = ilsc.forms.DateForm()
+    form = ilsc.forms.DateLocForm()
     _locs = {-1 : 'Alle'}
     _locs.update(_locs_dict)
     form.location.choices = list(_locs.items())

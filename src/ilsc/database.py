@@ -27,6 +27,7 @@ import flask_login
 from sqlalchemy_utils import database_exists
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 
 appDB = SQLAlchemy()
 
@@ -117,9 +118,9 @@ class User(appDB.Model, flask_login.UserMixin):
     
     @staticmethod
     def check_duplicate(needle):
-        _result = appDB.session.query(User).filter_by(username=needle).first()
+        _result = appDB.session.query(User).filter(func.lower(User.username) == func.lower(needle)).first()
         if _result: return True
-        return False
+        else: return False
     ##
     # Private methods
     ##
@@ -280,9 +281,9 @@ class DBOrganisations(appDB.Model):
 
     @staticmethod
     def check_duplicate(needle):
-        _result = appDB.session.query(DBOrganisations).filter_by(name=needle).first()
+        _result = appDB.session.query(DBOrganisations).filter(func.lower(DBOrganisations.name) == func.lower(needle)).first()
         if _result: return True
-        return False
+        else: return False
 
 class DBLocations(appDB.Model):
     '''
