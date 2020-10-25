@@ -677,7 +677,7 @@ class Backend(object):
                 self.logger.debug(e)
                 return None
 
-    def add_organisation(self, form):
+    def add_organisation(self, form, upgrade = False):
         '''
         add user to database
         '''
@@ -695,7 +695,10 @@ class Backend(object):
             self.appDB.session.commit()
             form.location_id = new_loc.id
             #TODO: bring get_all_user_roles together with other stuff
-            form.role_list = [k for k in self.get_all_user_roles().keys() if k != 1 ] 
+            if upgrade == False:
+                form.role_list = [k for k in self.get_all_user_roles().keys() if k != 1 ] 
+            else:
+                form.role_list = [k for k in self.get_all_user_roles().keys()]
             self.add_user(form)
             return True, ''
         except Exception as e:
@@ -970,6 +973,37 @@ class Backend(object):
         #qr_code.svg('file.svg', scale=scale, quiet_zone=quiet, svgclass="glad_qrcode", xmldecl=True)
         qr_code.png(".//static//codes//{}.png".format(guid), scale=scale, module_color=[0, 0, 0], background=[255, 255, 255])
         return qr_code
+
+    def upgrade(self):
+        #TODO: Keep this here only as long as needed (alpha>beta!>ceta)
+        try:
+            super_role = Roles(name='SuperUser')
+            visit_role = Roles(name='VisitorAdmin')
+            admin_role = Roles(name='UserAdmin')
+            location_role = Roles(name='LocationAdmin')
+            self.appDB.session.commit()
+            firstuser = self.get_current_user()
+            firstuser.roles = [super_role, visit_role, admin_role, location_role]
+            self.appDB.session.commit()
+    
+            self.appDB.session.add(firstuser)
+            self.appDB.session.commit()
+    
+            organisation = DBOrganisations(oid = 0,
+                                name='Mainorganisation')
+            self.appDB.session.add(organisation)
+            self.appDB.session.commit()
+            
+            result = self.appDB.session.query(User.devision).distinct(User.devision).all()
+
+            for r in list(result):
+                location = DBLocations(lid = r[0],
+                                    name=f'Location_{r[0]}',
+                                    organisation = 0)
+                self.appDB.session.add(location)
+                self.appDB.session.commit()
+        except Exception as e:
+            self.logger.debug(e)
 
 #Testfunctions
     def inject_random_userdata(self):

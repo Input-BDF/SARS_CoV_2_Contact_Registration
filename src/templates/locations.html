@@ -14,7 +14,7 @@
 </tr>
 {% for loc in locations %}
 <tr>
-  <td>{{ loc.name }}</td>
+  <td>{{ loc.name|safe }}</td>
   <td>{{ loc.checkouts }}</td>
   <td class="btn_option"><a href="{{ url_for('r_location_edit', lid=loc.id) }}"><button>Edit</button></a></td>
   <td class="btn_option"><a href="{{ url_for('r_location_delete', lid=loc.id) }}"><button>Delete</button></a></td>

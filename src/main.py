@@ -13,7 +13,6 @@ import logging
 import json
 import ilsc
 
-from datetime import date
 from twisted.internet import reactor, ssl
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
@@ -677,6 +676,20 @@ def r_visits(guid):
     if appBackend.check_guid(guid):
         visits = appBackend.fetch_visits(guid,_locs.keys())
     return __render('visits.html', form=form, visits=visits, loc = _locs)
+
+@flaskApp.route('/upgrade', methods=['GET', 'POST'])
+@flask_login.login_required
+def r_upgrade():
+    try:
+        _user = appBackend.get_current_user()
+        if _user.location == None:
+            '''
+            render organisation add form
+            '''
+            appBackend.upgrade()
+        return flask.redirect(flask.url_for('r_locations'),code=302)
+    except Exception as e:
+        logging.warning('Something terribly went wrong. Hope you did an backup!')
 
 @flaskApp.errorhandler(404)
 def r_page_not_found(error):
