@@ -605,21 +605,25 @@ class Backend(object):
         with self.flaskApp.app_context():
             try:
 
-                eid = DBLocations.id.label("id")
+                lid = DBLocations.id.label("id")
                 name = DBLocations.name.label("name")
+                checkouts = DBLocations.name.label("checkouts")
                 #org = element.name.label("organisation")
 
-                _query = self.appDB.session.query(eid, name)\
+                #_query = self.appDB.session.query(lid, name, checkouts)\
+                #                        .filter_by(organisation=orgid)\
+                #                        .order_by(lid)
+                _query = self.appDB.session.query(DBLocations)\
                                         .filter_by(organisation=orgid)\
-                                        .order_by(eid)
-                elements = _query.all()
+                                        .order_by(name)
+                locations = _query.all()
 
-                if elements:
-                    edict = {}
-                    for e in elements:
-                        edict[str(e.id)] = e.name
+                if locations:
+                    ldict = {}
+                    for l in locations:
+                        ldict[str(l.id)] = l.name
                     
-                    return edict
+                    return locations, ldict
                 else:
                     return {}
             except Exception as e:
@@ -631,12 +635,12 @@ class Backend(object):
         Query for users belonging to current session user organisation
         '''
         try:
-            _locdict = self.get_organisation_locations(uid)
+            _, locdict = self.get_organisation_locations(uid)
             #users = ilsc.User.query.all()
-            _query = self.appDB.session.query(User).filter(User.devision.in_(_locdict.keys())).order_by(User.username)
-            _users = _query.all()
-            if _users:
-                return _users, _locdict
+            _query = self.appDB.session.query(User).filter(User.devision.in_(locdict.keys())).order_by(User.username)
+            users = _query.all()
+            if users:
+                return users, locdict
             else:
                 return [],{}
         except Exception as e:
@@ -787,7 +791,9 @@ class Backend(object):
         with self.flaskApp.app_context():
             try:
                 location = self.appDB.session.query(DBLocations).filter_by(id=int(lid)).first()
-                location.name = form.name.data#clean_strings(form.name.data).decode('utf-8')
+                #location.name = form.name.data
+                location.name = clean_strings(form.name.data).decode('utf-8')
+                location.checkouts = form.checkouts.data
 
                 if self.appDB.session.is_modified(location):
                     self.appDB.session.commit()

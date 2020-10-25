@@ -9,6 +9,11 @@
 	{% for field in form if field.widget.input_type != 'hidden' %}
 		{{ field.label }}
 		{{ field }}
+		{% if field.description != '' %}
+			<div class="tooltip">i
+			  <div class="tooltiptext">{{ field.description }}</div>
+			</div>
+		{% endif%}
 		{% for error in field.errors %}
 			<ul><li style="color:red;">{{ error|safe }}</li></ul>
 		{% endfor %}

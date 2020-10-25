@@ -357,12 +357,13 @@ def r_user_add():
     '''
     _user = appBackend.get_current_user()
     if appBackend.get_current_user().is_superuser() and 'o' in flask.session.keys():
-        _locs = appBackend.get_organisation_locations(int(flask.session['o'])).items()
+        _, _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
     else:
-        _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
+        _, _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
+    _locs_dict = _locs_dict.items()
 
     form = ilsc.forms.UserAddForm(usr_dup_check = ilsc.User.check_duplicate)
-    form.devision.choices = list(_locs)
+    form.devision.choices = list(_locs_dict)
     exclude = -1 if appBackend.get_current_user().is_superuser() else 1
     form.roles.choices = ilsc.Roles.get_roles_pairs(exclude)
 
@@ -394,10 +395,11 @@ def r_user_edit(uid):
         if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
             return redirect
         #TODO: fetch not from Backend but directly from organisation somehow
-        _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
+        _, _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
+        _locs_dict = _locs_dict.items()
     
         form = ilsc.forms.UserForm(usr_dup_check = ilsc.User.check_duplicate, obj = _user)
-        form.devision.choices = list(_locs)
+        form.devision.choices = list(_locs_dict)
         exclude = -1 if appBackend.get_current_user().is_superuser() else 1
         form.roles.choices = ilsc.Roles.get_roles_pairs(exclude)
 
@@ -435,7 +437,7 @@ def r_user_passwd(uid):
             return redirect
         if _user.id == MAGIC_USER_ID and not appBackend.check_superuser():
             return redirect
-        form = ilsc.forms.ChangePasswd()
+        form = ilsc.forms.ChangePasswd(obj = _user)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_password(_user.id, form)
             if success:
@@ -443,8 +445,6 @@ def r_user_passwd(uid):
             else:
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_users'),code=302)
-        
-        form = ilsc.forms.ChangePasswd(obj = _user)
         return __render('user_edit.html',
                         form = form,
                         superuser = MAGIC_USER_ID==_user.id,
@@ -561,10 +561,10 @@ def r_locations():
     '''
     _user = appBackend.get_current_user()
     if 'o' in flask.session.keys() and _user.is_superuser():
-        _locs = appBackend.get_organisation_locations(int(flask.session['o'])).items()
+        _locs, _ = appBackend.get_organisation_locations(int(flask.session['o']))
     else:
-        _locs = appBackend.get_organisation_locations(_user.location.organisation).items()
-
+        _locs, _ = appBackend.get_organisation_locations(_user.location.organisation)
+    
     msg = check_messages()
     return __render('locations.html', locations=_locs, msg=msg)#, org = orgdict)
 
@@ -590,8 +590,7 @@ def r_location_add():
             flask.session['messages'] = json.dumps({"error": msg})
         return flask.redirect(flask.url_for('r_locations'),code=302)
     else:
-        return __render('locations_add.html', form = form)
-    return __render('locations_add.html', form = form)
+        return __render('locations_edit.html', form = form, action = flask.url_for('r_location_add'))
 
 @flaskApp.route('/locations/edit/<lid>', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -600,20 +599,21 @@ def r_location_edit(lid):
     '''
     location edit form
     '''
-    form = ilsc.forms.LocationForm()
-    location = appBackend.fetch_element_by_id(ilsc.DBLocations, lid)
-    if ( location and appBackend.check_organisation_permission(lid) ) or ( appBackend.get_current_user().is_superuser() ):
+
+    _location = appBackend.fetch_element_by_id(ilsc.DBLocations, lid)
+    if ( _location and appBackend.check_organisation_permission(lid) ) or ( appBackend.get_current_user().is_superuser() ):
+        form = ilsc.forms.LocationForm(obj = _location)
         if 'POST' == flask.request.method and form.validate_on_submit():
-            success, msg = appBackend.update_location(location.id, form)
+            success, msg = appBackend.update_location(_location.id, form)
             if success:
                 flask.session['messages'] = json.dumps({"success": msg})
             else:
                 flask.session['messages'] = json.dumps({"error": msg})
             return flask.redirect(flask.url_for('r_locations'),code=302)
-        
-        form = ilsc.forms.LocationForm(obj = location)
-        return __render('locations_edit.html', form = form, lid=lid)
 
+        return __render('locations_edit.html',
+                        form = form,
+                        action = flask.url_for('r_location_edit', lid=lid))
     else:
         return flask.redirect(flask.url_for('r_locations'),code=302)
 
@@ -637,9 +637,9 @@ def r_guests():
     guests = []
     _user = appBackend.get_current_user()
     if 'o' in flask.session.keys() and _user.is_superuser():
-        _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
+        _, _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
     else:
-        _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
+        _, _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
     form = ilsc.forms.DateLocForm()
     _locs = {-1 : 'Alle'}
     _locs.update(_locs_dict)
@@ -667,9 +667,9 @@ def r_visits(guid):
     visits = []
     _user = appBackend.get_current_user()
     if 'o' in flask.session.keys() and _user.is_superuser():
-        _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
+        _, _locs_dict = appBackend.get_organisation_locations(int(flask.session['o']))
     else:
-        _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
+        _, _locs_dict = appBackend.get_organisation_locations(_user.location.organisation)
     form = ilsc.forms.DateLocForm()
     _locs = {-1 : 'Alle'}
     _locs.update(_locs_dict)

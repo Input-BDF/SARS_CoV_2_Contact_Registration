@@ -9,15 +9,15 @@
 <tbody>
 <tr>
   <th>Location</th>
-  <th>Autoleave (Stunde)</th>
+  <th>Autoleave</th>
   <th style="width:16%;" colspan="2" class="btn_option"><a href="{{ url_for('r_location_add') }}"><button>Add Location</button></a></th>
 </tr>
-{% for k,v in locations %}
+{% for loc in locations %}
 <tr>
-  <td>{{ v }}</td>
-  <td></td>
-  <td class="btn_option"><a href="{{ url_for('r_location_edit', lid=k) }}"><button>Edit</button></a></td>
-  <td class="btn_option"><a href="{{ url_for('r_location_delete', lid=k) }}"><button>Delete</button></a></td>
+  <td>{{ loc.name }}</td>
+  <td>{{ loc.checkouts }}</td>
+  <td class="btn_option"><a href="{{ url_for('r_location_edit', lid=loc.id) }}"><button>Edit</button></a></td>
+  <td class="btn_option"><a href="{{ url_for('r_location_delete', lid=loc.id) }}"><button>Delete</button></a></td>
 </tr>
 {% endfor %}
 </tbody>

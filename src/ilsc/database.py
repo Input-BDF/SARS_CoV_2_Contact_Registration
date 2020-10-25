@@ -294,10 +294,8 @@ class DBLocations(appDB.Model):
     # Columns
     id = appDB.Column(appDB.Integer, primary_key=True)
     name = appDB.Column(appDB.VARCHAR(255))
-    #organisation = appDB.Column(appDB.Integer, default=0)
     organisation = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_organisations.id', ondelete='CASCADE'))
-    
-    #user = appDB.relationship('User')
+    checkouts = appDB.Column(appDB.VARCHAR(255))
     ##
     # Public methods
     ##

@@ -84,11 +84,11 @@ class UserForm(FlaskForm):
     username = StringField(label = 'Nutzername',
                             validators=[InputRequired(message='Bitte Vornamen eingeben'), length(max=40, message='Maximal 40 Zeichen erlaubt.'), validate_unique_usr],
                             filters=(),
-                            description='Nutzername',
+                            description='',
                             id='username',
                             render_kw={'placeholder': 'Nutzername', 'maxlength':'40'}
                             )
-    devision = SelectField(label = 'Sektion')
+    devision = SelectField(label = 'Location')
     roles = SelectMultipleField('Nutzerrollen', 
         coerce=int,
         option_widget=widgets.CheckboxInput(), 
@@ -108,13 +108,17 @@ class UserAddForm(UserForm):
     '''
     User add form
     '''
-    password = PasswordField('Passwort', validators=[
-        DataRequired(),
-        EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
-        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[_\-=@$!%*#?&])[A-Za-z\d@_\-=$!%*#?&]{8,}$',
-               message="""Passwort muss mindestens 8 Zeichen lang sein und einen <br/>
-               Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten""")
-    ])
+    password = PasswordField('Passwort',
+                            validators=[
+                                DataRequired(),
+                                EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
+                                Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[_\-=@$!%*#?&])[A-Za-z\d@_\-=$!%*#?&]{8,}$',
+                                message="""Passwort muss mindestens 8 Zeichen lang sein und einen<br/>"""\
+                                        """Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten""")
+                            ],
+                            description="""Passwort muss mindestens 8 Zeichen lang sein und einen """\
+                                        """Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten"""
+                            )
     confirm = PasswordField('Passwort wiederholen')
     
     def __init__(self, *args, **kwargs):
@@ -124,13 +128,17 @@ class ChangePasswd(FlaskForm):
     '''
     User password change form
     '''
-    password = PasswordField('Passwort', validators=[
-        DataRequired(),
-        EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
-        Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[_\-=@$!%*#?&])[A-Za-z\d@_\-=$!%*#?&]{8,}$',
-               message="""Passwort muss mindestens 8 Zeichen lang sein und einen <br/>
-               Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten""")
-    ])
+    password = PasswordField('Passwort',
+                            validators=[
+                                DataRequired(),
+                                EqualTo('confirm', message='Passwörter müssen übereinstimmen'),
+                                Regexp('^(?=.*[A-Za-z])(?=.*\d)(?=.*[_\-=@$!%*#?&])[A-Za-z\d@_\-=$!%*#?&]{8,}$',
+                                       message="""Passwort muss mindestens 8 Zeichen lang sein und einen<br/>"""\
+                                               """Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten""")
+                            ],
+                            description="""Passwort muss mindestens 8 Zeichen lang sein und einen """\
+                                        """Buchstaben, eine Zahl und ein Sonderzeichen _-=@$!%*#?& enthalten"""
+                            )
     confirm = PasswordField('Passwort wiederholen')
 
 class DateLocForm(FlaskForm):
@@ -153,9 +161,27 @@ class LocationForm(FlaskForm):
     name = StringField(label = 'Location',
                             validators=[InputRequired(message='Bitte Namen eingeben'), length(max=256, message='Maximal 256 Zeichen erlaubt.')],
                             filters=(),
-                            description='Locationname',
+                            description='anzuzeigender Locationname',
                             id='locname',
                             render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
+                            )
+    checkouts = StringField(label = 'Autocheckouts',
+                            validators=[
+                                InputRequired(message='Bitte Stunde(n) eingeben.'),
+                                length(max=256, message='Maximal 256 Zeichen erlaubt.'),
+                                Regexp('^(?:([0-9]|1[0-9]|2[0-3]))(,\s*([0-9]|1[0-9]|2[0-3]))*$',
+                                message="""Es sind nur Stundenwerte zwischen 0 und 23 erlaubt.<br/>"""\
+                                        """Mehrere Werte durch Komma trennen. z.B.: 0,12,23""")
+                            ],
+                            default = 0,
+                            filters=(),
+                            description="""Stunde zu der ein Autocheckout aller Besucher sattfindet.\n"""\
+                                        """Mehrere Werte durch Komma trennen. z.B.: 0,12,23""",
+                            id='locname',
+                            render_kw={'placeholder': 'Bitte Stunde(n) eingeben.',
+                                       'maxlength':'256',
+                                       'title':"""Stunde zu der ein Autocheckout aller Besucher sattfindet.\n"""\
+                                       """Mehrere Werte durch Komma trennen. z.B.: 0,12,23""" }
                             )
 
     def __init__(self, obj = None, *arg, **kwargs):
