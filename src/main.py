@@ -245,8 +245,10 @@ def utility_processor():
         result = list(map(lambda r: r.name, resort))
         return result
     return dict(sort_roles=sort_roles)
+#Background scheduler
+scheduler = BackgroundScheduler({'apscheduler.timezone': appConfig.app['timezone']}) 
 # init backend
-appBackend = ilsc.Backend(appConfig, flaskApp, ilsc.appDB, MAGIC_USER_ID)
+appBackend = ilsc.Backend(appConfig, flaskApp, ilsc.appDB, MAGIC_USER_ID, scheduler)
 
 ##
 # Routing
@@ -714,10 +716,7 @@ def cleanup_everything():
     appBackend.clean_obsolete_checkins()
     appBackend.clean_obsolete_contacts()
 
-#Background scheduler
-scheduler = BackgroundScheduler({'apscheduler.timezone': appConfig.app['timezone']}) 
-for h in appConfig.app['autocheckout']:
-    scheduler.add_job(cleanup_everything, 'cron', hour=h, minute=0)
+appBackend.init_schedulers()
 scheduler.start()
 
 if appConfig.app['cleanonstart']:

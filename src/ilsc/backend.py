@@ -80,7 +80,7 @@ class decoded_guest():
 
 class Backend(object):
     '''Backend class'''
-    def __init__(self, config, flaskApp, appDB, superuser):
+    def __init__(self, config, flaskApp, appDB, superuser, scheduler):
         '''
         Constructs a Backend object
         '''
@@ -91,10 +91,11 @@ class Backend(object):
         self.websocket = None
         self.superuser = superuser
         self.init_websocket()
+        self.scheduler = scheduler
 
     def checkout_all(self):
         '''
-        Query Database an checkout all
+        Query Database an checkout all and fuckin check them out regardless
         '''
         with self.flaskApp.app_context():
             try:
@@ -108,6 +109,10 @@ class Backend(object):
             except Exception as e:
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00003) beim Full-Checkout.'
+
+
+    def clean_per_location(self):
+        self.scheduler.add_job(self.cleanup_everything, 'cron', hour=h, minute=0)
 
     def clean_obsolete_checkins(self):
         '''
@@ -1049,3 +1054,17 @@ class Backend(object):
         except Exception as e:
             self.logger.debug(e)
             return False, 'Schwerer Fehler (x00002) beim Checkin'
+
+    def init_schedulers(self):
+        '''
+        Query Database for locations an init cron for scheduler tas
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _query = self.appDB.session.query(DBLocations)
+                _locs = _query.all()
+                for l in _locs:
+                    pass
+            except Exception as e:
+                self.logger.debug(e)
+                return {}
