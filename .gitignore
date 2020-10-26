@@ -1,4 +1,5 @@
 /src/static/js/instascan/instascan-master
+/src/migrations
 /.pydevproject
 /.project
 __pycache__

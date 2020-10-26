@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 Created on 13.06.2020
 
@@ -8,6 +9,8 @@ usage:
 *init db
 python3 migrate.py db init
 python3 migrate.py db migrate
+or
+python3 migrate.py db migrate -m "Initial migration."
 *make changes
 python3 migrate.py db migrate
 python3 upgrade
@@ -113,55 +116,8 @@ class DBLocations(appDB.Model):
     organisation = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_organisations.id', ondelete='CASCADE'))
     checkouts = appDB.Column(appDB.VARCHAR(255))
 
-def reinit_database():
-    '''
-    initialize database and primary user
-    '''
-    try:
-        '''
-        appDB.drop_all()
-        appDB.create_all()
-        '''
-        '''
-        # add meta
-        meta = ILSCMeta()
-        appDB.session.add(meta)
-        appDB.session.commit()
-        '''
-
-        super_role = Roles(name='SuperUser')
-        visit_role = Roles(name='VisitorAdmin')
-        admin_role = Roles(name='UserAdmin')
-        location_role = Roles(name='LocationAdmin')
-        appDB.session.commit()
-
-        newadmin = User(username='admin',
-                        password='admin',
-                        devision = 0,
-                        do_hash=True)
-
-        newadmin.roles = [super_role, visit_role, admin_role, location_role]
-
-        appDB.session.add(newadmin)
-        appDB.session.commit()
-
-        organisation = DBOrganisations(oid = 0,
-                            name='Mainorganisation')
-        appDB.session.add(organisation)
-        appDB.session.commit()
-
-        location = DBLocations(lid = 0,
-                            name='Mainlocation',
-                            organisation = 0)
-        appDB.session.add(location)
-        appDB.session.commit() 
-
-    except Exception as e:
-        print(e)
-
 if __name__ == '__main__':
     try:
         manager.run()
-        reinit_database()
     except Exception as e:
         print(e)

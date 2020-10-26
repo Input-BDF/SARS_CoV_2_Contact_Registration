@@ -44,7 +44,7 @@ class ILSCMeta(appDB.Model):
     # Public methods
     ##
     def __init__(self):
-        self.version = '0.4'
+        self.version = '0.5'
         self.created = datetime.utcnow()
     def __repr__(self):
         return '<ILSCMeta %r>' % (self.version)
@@ -344,7 +344,7 @@ def init_database():
     try:
         appDB.drop_all()
         appDB.create_all()
-    
+
         # add meta
         meta = ILSCMeta()
         appDB.session.add(meta)

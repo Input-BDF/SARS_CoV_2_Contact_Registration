@@ -17,7 +17,9 @@
   <td>{{ organisation.name }}</td>
   <td>{{ organisation.locations|length }}</td>
   <td class="btn_option"><a href="{{ url_for('r_organisation_edit', oid=organisation.id) }}"><button>Edit</button></a></td>
-  <td class="btn_option"><a href="{{ url_for('r_organisation_delete', oid=organisation.id) }}"><button>Delete</button></a></td>
+  {% if organisations|length > 1 %}
+    <td class="btn_option"><a href="{{ url_for('r_organisation_delete', oid=organisation.id) }}"><button>Delete</button></a></td>
+  {% endif %}
 
 </tr>
 {% endfor %}

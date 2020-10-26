@@ -217,6 +217,7 @@ def user_loader(userguid):
 
 @flaskLoginManager.unauthorized_handler
 def unauthorized():
+    flask.session['next_url'] = flask.request.path
     return flask.redirect(flask.url_for('r_signin'),code=302)
 
 def check_roles(roles=None):
@@ -318,7 +319,10 @@ def r_signin():
         if user and user.validate_password(password):
             if user.active:
                 flask_login.login_user(user)
-                return flask.redirect(flask.url_for('r_scanning'),code=302)
+                next_url = flask.session.get('next_url', '/')
+                flask.session.pop('next_url')
+                #return flask.redirect(flask.url_for('r_scanning'),code=302)
+                return flask.redirect(next_url,code=302)
             else:
                 errors.append(f'Fehler: Nutzer "{username}" inaktiv.')
         else:
@@ -684,11 +688,16 @@ def r_visits(guid):
 def r_upgrade():
     try:
         _user = appBackend.get_current_user()
+        #TODO: keep in mind, that this condition is only for version v0.5 So implement version check 
         if _user.location == None:
             '''
             render organisation add form
             '''
-            appBackend.upgrade()
+        success, msg = appBackend.upgrade()
+        if success:
+            flask.session['messages'] = json.dumps({"success": msg})
+        else:
+            flask.session['messages'] = json.dumps({"error": msg})
         return flask.redirect(flask.url_for('r_locations'),code=302)
     except Exception as e:
         logging.warning('Something terribly went wrong. Hope you did an backup!')

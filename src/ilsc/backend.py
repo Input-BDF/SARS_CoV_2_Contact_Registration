@@ -22,7 +22,7 @@ from sqlalchemy import exc
 from datetime import datetime, timedelta
 from .websocket import *
 
-from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles
+from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, ILSCMeta
 from ilsc import caesar
 
 from bs4 import BeautifulSoup
@@ -987,28 +987,55 @@ class Backend(object):
             admin_role = Roles(name='UserAdmin')
             location_role = Roles(name='LocationAdmin')
             self.appDB.session.commit()
+
             firstuser = self.get_current_user()
-            firstuser.roles = [super_role, visit_role, admin_role, location_role]
-            self.appDB.session.commit()
+            if firstuser:
+                firstuser.roles = [super_role, visit_role, admin_role, location_role]
+                self.appDB.session.commit()
     
-            self.appDB.session.add(firstuser)
-            self.appDB.session.commit()
-    
+                self.appDB.session.add(firstuser)
+                self.appDB.session.commit()
+            else:
+                raise Exception("Sorry, there is no user available. Can not perfom db upgrade")
+
             organisation = DBOrganisations(oid = 0,
                                 name='Mainorganisation')
             self.appDB.session.add(organisation)
             self.appDB.session.commit()
             
             result = self.appDB.session.query(User.devision).distinct(User.devision).all()
+            if result:
+                for r in list(result):
+                    location = DBLocations(lid = r[0],
+                                        name=f'Location_{r[0]}',
+                                        organisation = 0)
+                    self.appDB.session.add(location)
+                    self.appDB.session.commit()
 
-            for r in list(result):
-                location = DBLocations(lid = r[0],
-                                    name=f'Location_{r[0]}',
-                                    organisation = 0)
-                self.appDB.session.add(location)
+            result = self.appDB.session.query(ILSCMeta).first()
+            if result:
+                result.version = '0.5'
+                result.created = datetime.utcnow()
                 self.appDB.session.commit()
+            return True, 'Upgrade successful. Now configure autoleaves, locationnames and user roles if needed.'
         except Exception as e:
             self.logger.debug(e)
+            return False, 'Upgrade failed. Hope you made a backup.'
+
+    def init_schedulers(self):
+        '''
+        Query Database for locations an init cron for scheduler tas
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _query = self.appDB.session.query(DBLocations)
+                _locs = _query.all()
+                for l in _locs:
+                    #TODO: bring to end
+                    pass
+            except Exception as e:
+                self.logger.debug(e)
+                return {}
 
 #Testfunctions
     def inject_random_userdata(self):
@@ -1054,17 +1081,3 @@ class Backend(object):
         except Exception as e:
             self.logger.debug(e)
             return False, 'Schwerer Fehler (x00002) beim Checkin'
-
-    def init_schedulers(self):
-        '''
-        Query Database for locations an init cron for scheduler tas
-        '''
-        with self.flaskApp.app_context():
-            try:
-                _query = self.appDB.session.query(DBLocations)
-                _locs = _query.all()
-                for l in _locs:
-                    pass
-            except Exception as e:
-                self.logger.debug(e)
-                return {}
