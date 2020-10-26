@@ -93,96 +93,6 @@ class Backend(object):
         self.init_websocket()
         self.scheduler = scheduler
 
-    def checkout_all(self):
-        '''
-        Query Database an checkout all and fuckin check them out regardless
-        '''
-        with self.flaskApp.app_context():
-            try:
-                _guests = self.appDB.session.query(DBCheckin).filter_by(checkout=None).order_by(DBCheckin.checkin.desc()).all()
-
-                for _guest in _guests:
-                    _guest.checkout=datetime.now()
-                self.appDB.session.commit()
-                self.logger.debug(f'Checked {len(_guests)} entries out')
-                return True, 'Checkout erfolgreich'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00003) beim Full-Checkout.'
-
-
-    def clean_per_location(self):
-        self.scheduler.add_job(self.cleanup_everything, 'cron', hour=h, minute=0)
-
-    def clean_obsolete_checkins(self):
-        '''
-        Query Database for obsolete checkin entries and delete
-        '''
-        with self.flaskApp.app_context():
-            try:
-                days = int(self.config.app['keepdays'])
-                _query = self.appDB.session.query(DBCheckin).filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
-                old_checkins = _query.all()
-                for checkin in old_checkins:
-                    self.appDB.session.delete(checkin)
-                self.appDB.session.commit()
-                self.logger.debug(f'Deleted {len(old_checkins)} entries from checkins')
-                return True, 'Löschen erfolgrreich erfolgreich'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00004) beim Checkin-Aufräumen.'
-
-    def clean_obsolete_contacts(self):
-        '''
-        clean obsolete contact data from database
-        '''
-        with self.flaskApp.app_context():
-            try:
-                active = []
-                active_checkins = self.appDB.session.query(DBCheckin).all()
-                for a in active_checkins:
-                    active.append(a.guid)
-                old_guids = DBGuest.guid.notin_(tuple(active))
-                days = int(self.config.app['keepdays'])
-                _query = self.appDB.session.query(DBGuest).filter(old_guids).filter(DBGuest.created<datetime.now()-timedelta(days=days))
-                remove_guests= _query.all()
-                codes = []
-                for r in remove_guests:
-                    codes.append(r.guid)
-                    self.appDB.session.delete(r)
-                self.appDB.session.commit()
-                if len(codes):
-                    self.delete_qr_codes(codes)
-                self.logger.debug(f'Deleted {len(remove_guests)} entries from contacts')
-                return True, 'Löschen erfolgrreich erfolgreich'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00004) beim Aufräumen.'
-
-    def delete_qr_codes(self, codes = []):
-        '''
-        delete not needed code files
-        '''
-        try:
-            for c in codes:
-                os.remove(f".//static//codes//{c.decode('utf-8')}.png")
-        except Exception as e:
-            self.logger.debug(e)
-
-    def get_all_guids(self):
-        '''
-        get all checkin guids
-        '''
-        with self.flaskApp.app_context():
-            try:
-                _guests = self.appDB.session.query(DBCheckin).all()
-                _guids = [] 
-                for _guest in _guests:
-                    _guids.append(_guest.guid)
-                return _guids
-            except Exception as e:
-                self.logger.debug(e)
-
     def init_websocket(self):
         '''
         Initializes websocket
@@ -591,6 +501,27 @@ class Backend(object):
         oid = self.fetch_element_by_id(DBLocations, lid)
         return oid.organisation if oid else None
 
+    def get_location_checkouts(self):
+        '''
+        Query Database for locations checkouts
+        '''
+        #with self.flaskApp.app_context():
+        try:
+
+            lid = DBLocations.id.label("id")
+            checkouts = DBLocations.checkouts.label("checkouts")
+            _query = self.appDB.session.query(lid, checkouts)\
+                                    .order_by(lid)
+            locations = _query.all()
+
+            if locations:
+                return locations
+            else:
+                return []
+        except Exception as e:
+            self.logger.debug(e)
+            return []
+
     def get_organisations(self):
         try:
             orgs = DBOrganisations.query.all()
@@ -609,15 +540,8 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-
-                lid = DBLocations.id.label("id")
                 name = DBLocations.name.label("name")
-                checkouts = DBLocations.name.label("checkouts")
-                #org = element.name.label("organisation")
 
-                #_query = self.appDB.session.query(lid, name, checkouts)\
-                #                        .filter_by(organisation=orgid)\
-                #                        .order_by(lid)
                 _query = self.appDB.session.query(DBLocations)\
                                         .filter_by(organisation=orgid)\
                                         .order_by(name)
@@ -798,15 +722,16 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                location = self.appDB.session.query(DBLocations).filter_by(id=int(lid)).first()
+                _location = self.appDB.session.query(DBLocations).filter_by(id=int(lid)).first()
                 #location.name = form.name.data
-                location.name = clean_strings(form.name.data).decode('utf-8')
-                location.checkouts = form.checkouts.data
+                _location.name = clean_strings(form.name.data).decode('utf-8')
+                _location.checkouts = form.checkouts.data
 
-                if self.appDB.session.is_modified(location):
+                if self.appDB.session.is_modified(_location):
                     self.appDB.session.commit()
-                    return True, f'"{location.name}" erfolgreich geändert'
-                return True, f'Für "{location.name}" hat sich nichts geändert.'
+                    self.update_scheduler(_location)
+                    return True, f'"{_location.name}" erfolgreich geändert'
+                return True, f'Für "{_location.name}" hat sich nichts geändert.'
             except Exception as e:
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
@@ -1028,14 +953,121 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                _query = self.appDB.session.query(DBLocations)
-                _locs = _query.all()
+                _locs = self.get_location_checkouts()
                 for l in _locs:
-                    #TODO: bring to end
+                    self.scheduler.add_job(self.checkout_all, 'cron', args=[l.id], id=f"location_{l.id}", hour=l.checkouts, minute=0)
                     pass
             except Exception as e:
                 self.logger.debug(e)
-                return {}
+                return []
+
+    def update_scheduler(self, _loc):
+        '''
+        update jobs
+        '''
+        try:
+            self.scheduler.reschedule_job(job_id=f"location_{_loc.id}", trigger='cron', hour=_loc.checkouts, minute=0)
+            self.logger.info(f'Checkout job für {_loc.name} eingerichtet')
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Schwerer Fehler (x00010) beim task update.'
+
+    def cleanup_everything(self):
+        '''
+        check and clean database
+        '''
+        self.checkout_all()
+        self.clean_obsolete_checkins()
+        self.clean_obsolete_contacts()
+
+    def checkout_all(self, lid = None):
+        '''
+        Query Database an checkout all and fuckin check them out regardless
+        '''
+        with self.flaskApp.app_context():
+            try:
+                if not lid:
+                    _guests = self.appDB.session.query(DBCheckin).filter_by(checkout=None).order_by(DBCheckin.checkin.desc()).all()
+                else:
+                    _guests = self.appDB.session.query(DBCheckin).filter_by(checkout=None, devision = lid).order_by(DBCheckin.checkin.desc()).all()
+
+                for _guest in _guests:
+                    _guest.checkout=datetime.now()
+                self.appDB.session.commit()
+                self.logger.debug(f'Checked {len(_guests)} entries out')
+                return True, 'Checkout erfolgreich'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00003) beim Full-Checkout.'
+
+    def clean_obsolete_checkins(self):
+        '''
+        Query Database for obsolete checkin entries and delete
+        '''
+        with self.flaskApp.app_context():
+            try:
+                days = int(self.config.app['keepdays'])
+                _query = self.appDB.session.query(DBCheckin).filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
+                old_checkins = _query.all()
+                for checkin in old_checkins:
+                    self.appDB.session.delete(checkin)
+                self.appDB.session.commit()
+                self.logger.debug(f'Deleted {len(old_checkins)} entries from checkins')
+                return True, 'Löschen erfolgrreich erfolgreich'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00004) beim Checkin-Aufräumen.'
+
+    def clean_obsolete_contacts(self):
+        '''
+        clean obsolete contact data from database
+        '''
+        with self.flaskApp.app_context():
+            try:
+                active = []
+                active_checkins = self.appDB.session.query(DBCheckin).all()
+                for a in active_checkins:
+                    active.append(a.guid)
+                old_guids = DBGuest.guid.notin_(tuple(active))
+                days = int(self.config.app['keepdays'])
+                _query = self.appDB.session.query(DBGuest).filter(old_guids).filter(DBGuest.created<datetime.now()-timedelta(days=days))
+                remove_guests= _query.all()
+                codes = []
+                for r in remove_guests:
+                    codes.append(r.guid)
+                    self.appDB.session.delete(r)
+                self.appDB.session.commit()
+                if len(codes):
+                    self.delete_qr_codes(codes)
+                self.logger.debug(f'Deleted {len(remove_guests)} entries from contacts')
+                return True, 'Löschen erfolgrreich erfolgreich'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00004) beim Aufräumen.'
+
+    def delete_qr_codes(self, codes = []):
+        '''
+        delete not needed code files
+        '''
+        try:
+            for c in codes:
+                os.remove(f".//static//codes//{c.decode('utf-8')}.png")
+        except Exception as e:
+            self.logger.debug(e)
+
+    def get_all_guids(self):
+        '''
+        get all checkin guids
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _guests = self.appDB.session.query(DBCheckin).all()
+                _guids = [] 
+                for _guest in _guests:
+                    _guids.append(_guest.guid)
+                return _guids
+            except Exception as e:
+                self.logger.debug(e)
 
 #Testfunctions
     def inject_random_userdata(self):

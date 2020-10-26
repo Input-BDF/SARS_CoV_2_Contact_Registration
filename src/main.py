@@ -717,14 +717,6 @@ with flaskApp.app_context():
         # initialize database
         ilsc.init_database()
 
-def cleanup_everything():
-    '''
-    check and clean database
-    '''
-    appBackend.checkout_all()
-    appBackend.clean_obsolete_checkins()
-    appBackend.clean_obsolete_contacts()
-
 appBackend.init_schedulers()
 scheduler.start()
 
