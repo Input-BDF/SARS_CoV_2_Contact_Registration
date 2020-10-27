@@ -501,27 +501,6 @@ class Backend(object):
         oid = self.fetch_element_by_id(DBLocations, lid)
         return oid.organisation if oid else None
 
-    def get_location_checkouts(self):
-        '''
-        Query Database for locations checkouts
-        '''
-        #with self.flaskApp.app_context():
-        try:
-
-            lid = DBLocations.id.label("id")
-            checkouts = DBLocations.checkouts.label("checkouts")
-            _query = self.appDB.session.query(lid, checkouts)\
-                                    .order_by(lid)
-            locations = _query.all()
-
-            if locations:
-                return locations
-            else:
-                return []
-        except Exception as e:
-            self.logger.debug(e)
-            return []
-
     def get_organisations(self):
         try:
             orgs = DBOrganisations.query.all()
@@ -554,10 +533,10 @@ class Backend(object):
                     
                     return locations, ldict
                 else:
-                    return {}
+                    return [], {}
             except Exception as e:
                 self.logger.debug(e)
-                return {}
+                return [], {}
 
     def get_organisation_users(self, uid):
         '''
@@ -618,10 +597,11 @@ class Backend(object):
             self.appDB.session.commit()
             
             #Dont use self.add_location to retrieve locationid better
-            new_loc = DBLocations(form.locationname.data, new_org.id)
+            new_loc = DBLocations(form.locationname.data, new_org.id,checkouts=form.checkouts.data)
             self.appDB.session.add(new_loc)
             self.appDB.session.flush()
             self.appDB.session.commit()
+            self.update_scheduler(new_loc)
             form.location_id = new_loc.id
             #TODO: bring get_all_user_roles together with other stuff
             if upgrade == False:
@@ -679,38 +659,34 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
 
-    def fetch_locations(self):
+    def get_locations(self):
         '''
         Query Database for locations
         '''
         with self.flaskApp.app_context():
             try:
-                lid = DBLocations.id.label("id")
-                name = DBLocations.name.label("name")
-                organisation = DBLocations.organisation.label("organisation")
-
-                _query = self.appDB.session.query(lid, name, organisation)\
-                                               .order_by(lid)
+                _query = self.appDB.session.query(DBLocations)\
+                                               .order_by(DBLocations.id)
                 locations = _query.all()
 
                 if locations:
-
                     return locations
                 else:
                     return []
             except Exception as e:
                 self.logger.debug(e)
-                return None
+                return []
 
-    def add_location(self, name, organisation):
+    def add_location(self, name, organisation, checkouts):
         '''
         add user to database
         '''
         try:
             with self.flaskApp.app_context():
-                new_loc = DBLocations(name, int(organisation))
+                new_loc = DBLocations(name, organisation=int(organisation), checkouts=checkouts)
                 self.appDB.session.add(new_loc)
                 self.appDB.session.commit()
+                self.update_scheduler(new_loc)
             return True, f'"{name}" erfolgreich hinzugefügt.'
         except Exception as e:
             self.logger.debug(e)
@@ -952,22 +928,30 @@ class Backend(object):
         Query Database for locations an init cron for scheduler tas
         '''
         with self.flaskApp.app_context():
-            try:
-                _locs = self.get_location_checkouts()
-                for l in _locs:
-                    self.scheduler.add_job(self.checkout_all, 'cron', args=[l.id], id=f"location_{l.id}", hour=l.checkouts, minute=0)
-                    pass
-            except Exception as e:
-                self.logger.debug(e)
-                return []
+            _locs = self.get_locations()
+            for l in _locs:
+                if l.checkouts:
+                    self.update_scheduler(l)
 
+    '''
+    def init_scheduler_job(self, _loc):
+        try:
+            self.scheduler.add_job(self.checkout_all, 'cron', args=[_loc.id], id=f"location_{_loc.id}", hour=_loc.checkouts, minute=0)
+        except Exception as e:
+            self.logger.debug(e)
+    '''
     def update_scheduler(self, _loc):
         '''
         update jobs
         '''
         try:
-            self.scheduler.reschedule_job(job_id=f"location_{_loc.id}", trigger='cron', hour=_loc.checkouts, minute=0)
-            self.logger.info(f'Checkout job für {_loc.name} eingerichtet')
+            if not _loc.checkouts == None:
+                _job = self.scheduler.get_job(job_id=f"location_{_loc.id}")
+                if _job:
+                    self.scheduler.reschedule_job(job_id=f"location_{_loc.id}", trigger='cron', hour=_loc.checkouts, minute=0)
+                else:
+                    self.scheduler.add_job(self.checkout_all, 'cron', args=[_loc.id], id=f"location_{_loc.id}", hour=_loc.checkouts, minute=0)
+                self.logger.info(f'Checkout(s) {_loc.checkouts} Uhr für {_loc.name} eingerichtet.')
         except Exception as e:
             self.logger.debug(e)
             return False, 'Schwerer Fehler (x00010) beim task update.'

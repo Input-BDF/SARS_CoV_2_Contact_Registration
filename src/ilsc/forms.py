@@ -227,10 +227,11 @@ class OrganisationRegForm(OrganisationForm, UserAddForm):
                         id='locname',
                         render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
                         )
+    checkouts = LocationForm.checkouts
     devision = None
     roles = None
 
-    __order = ['csrf_token', 'name', 'locationname', 'username', 'password', 'confirm']
+    __order = ['csrf_token', 'name', 'locationname', 'checkouts', 'username', 'password', 'confirm']
     def __init__(self, dup_check = None, usr_dup_check = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.usr_dup_check = usr_dup_check

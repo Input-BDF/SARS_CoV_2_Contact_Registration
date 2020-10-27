@@ -320,7 +320,8 @@ def r_signin():
             if user.active:
                 flask_login.login_user(user)
                 next_url = flask.session.get('next_url', '/')
-                flask.session.pop('next_url')
+                if 'next_url' in flask.session.keys():
+                    flask.session.pop('next_url')
                 #return flask.redirect(flask.url_for('r_scanning'),code=302)
                 return flask.redirect(next_url,code=302)
             else:
@@ -588,7 +589,8 @@ def r_location_add():
         else: 
             _org = appBackend.get_current_user().location.organisation
         success, msg = appBackend.add_location(name=form.name.data,
-                        organisation=_org)
+                                               organisation=_org,
+                                               checkouts=form.checkouts.data)
         if success:
             flask.session['messages'] = json.dumps({"success": msg})
         else:
@@ -721,7 +723,7 @@ appBackend.init_schedulers()
 scheduler.start()
 
 if appConfig.app['cleanonstart']:
-    cleanup_everything()
+    appBackend.cleanup_everything()
 
 #appBackend.inject_random_userdata()#just for testing
 try:

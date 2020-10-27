@@ -299,11 +299,12 @@ class DBLocations(appDB.Model):
     ##
     # Public methods
     ##
-    def __init__(self, name, organisation=0, lid = None):
+    def __init__(self, name, organisation=0, checkouts=None, lid = None):
         try:
             self.id = lid #Primary Key
             self.name = name
             self.organisation = organisation
+            self.checkouts = checkouts
 
         except Exception as e:
             print(e)
@@ -373,7 +374,7 @@ def init_database():
 
         location = DBLocations(lid = 0,
                             name='Mainlocation',
-                            organisation = 0)
+                            organisation = 0, checkouts=0)
         appDB.session.add(location)
         appDB.session.commit()
 
