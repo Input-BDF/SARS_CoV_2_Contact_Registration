@@ -42,6 +42,10 @@ Scanning is not available for ios devices as the used library can not access cam
 1. open backend via "backend" top right
 1. change username and password and add (optional) users
 
+## I used the last release? What now?
+
+Do a backup and check upgrad.md. Things can go wrong. If you have any trouble -> contact me!
+
 ## Used third party modules  
 https://github.com/schmich/instascan thx a lot, nice work done dude
 
