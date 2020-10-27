@@ -46,4 +46,4 @@ Scanning is not available for ios devices as the used library can not access cam
 https://github.com/schmich/instascan thx a lot, nice work done dude
 
 ## Disclaimer
-I absolutely do not take over any responsibility for the correctness of imprint and gprd. If there is something wrong ... let me now
+I absolutely do not take over any responsibility for the correctness of imprint and gprd. If there is something wrong ... let me know
