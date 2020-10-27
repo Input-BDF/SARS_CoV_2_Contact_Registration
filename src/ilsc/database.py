@@ -14,6 +14,7 @@ __all__ = [
     'UserRoles',
     'DBGuest',
     'DBCheckin',
+    'DBDeleteProtocol',
     'DBOrganisations',
     'DBLocations',
     # methods
@@ -242,6 +243,21 @@ class DBCheckin(appDB.Model):
     
     def entitytype(self):
         return __name__
+
+class DBDeleteProtocol(appDB.Model):
+    '''
+    checkin/out datatable
+    '''
+    __tablename__ = 'tbl_deletions'
+    __usage__ = 'DBDeleteProtocol'
+    # Columns
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    guid = appDB.Column(appDB.VARCHAR(255))
+    deleted = appDB.Column(appDB.DateTime, default=datetime.now)
+
+    def __init__(self, guid):
+        self.guid = guid
+        self.deleted = datetime.now()
 
 class DBOrganisations(appDB.Model):
     '''

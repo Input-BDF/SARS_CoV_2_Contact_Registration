@@ -7,6 +7,8 @@ keepdays = 28
 imprint = default_imprint.html
 gprd = default_gprd.html
 cleanonstart = False
+#Cron running to check obsolete data
+cleancron = 6
 timezone = Europe/Berlin
 
 [http]

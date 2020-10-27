@@ -99,6 +99,17 @@ class DBCheckin(appDB.Model):
     checkout = appDB.Column(appDB.DateTime, default=None )
     devision = appDB.Column(appDB.Integer, default=0)
 
+class DBDeleteProtocol(appDB.Model):
+    '''
+    checkin/out datatable
+    '''
+    __tablename__ = 'tbl_deletions'
+    __usage__ = 'DBDeleteProtocol'
+    # Columns
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    guid = appDB.Column(appDB.VARCHAR(255))
+    deleted = appDB.Column(appDB.DateTime, default=datetime.now)
+
 class DBOrganisations(appDB.Model):
     __tablename__ = 'tbl_organisations'
     __usage__ = 'Organisations'

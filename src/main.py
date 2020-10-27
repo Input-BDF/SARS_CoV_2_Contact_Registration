@@ -720,9 +720,11 @@ with flaskApp.app_context():
         ilsc.init_database()
 
 appBackend.init_schedulers()
+scheduler.add_job(appBackend.cleanup_everything, 'cron', id=f"leon_der_profi", hour=appConfig.app['cleancron'], minute=0)
 scheduler.start()
 
 if appConfig.app['cleanonstart']:
+    #TODO: cal this everytime at some reasonable time
     appBackend.cleanup_everything()
 
 #appBackend.inject_random_userdata()#just for testing

@@ -41,10 +41,10 @@ class Config(object):
         self.app['contactmail'] = ''
         self.app['keepdays'] = 2
         self.app['autocheckout'] = 6
-        self.app['devisions'] = ('Biergarten','bc','café','bd','bh','bi')
         self.app['imprint'] = 'default_imprint.html'
         self.app['gprd'] = 'default_gprd.html'
         self.app['cleanonstart'] = False
+        self.app['cleancron'] = 6
         self.app['timezone'] = 'Europe/Berlin'
         # Section [http]
         self.http = {}

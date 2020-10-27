@@ -22,7 +22,7 @@ from sqlalchemy import exc
 from datetime import datetime, timedelta
 from .websocket import *
 
-from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, ILSCMeta
+from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, ILSCMeta, DBDeleteProtocol
 from ilsc import caesar
 
 from bs4 import BeautifulSoup
@@ -933,13 +933,6 @@ class Backend(object):
                 if l.checkouts:
                     self.update_scheduler(l)
 
-    '''
-    def init_scheduler_job(self, _loc):
-        try:
-            self.scheduler.add_job(self.checkout_all, 'cron', args=[_loc.id], id=f"location_{_loc.id}", hour=_loc.checkouts, minute=0)
-        except Exception as e:
-            self.logger.debug(e)
-    '''
     def update_scheduler(self, _loc):
         '''
         update jobs
@@ -960,7 +953,6 @@ class Backend(object):
         '''
         check and clean database
         '''
-        self.checkout_all()
         self.clean_obsolete_checkins()
         self.clean_obsolete_contacts()
 
@@ -1020,6 +1012,8 @@ class Backend(object):
                 for r in remove_guests:
                     codes.append(r.guid)
                     self.appDB.session.delete(r)
+                    self.protocol_deletion(r.guid)
+
                 self.appDB.session.commit()
                 if len(codes):
                     self.delete_qr_codes(codes)
@@ -1052,6 +1046,11 @@ class Backend(object):
                 return _guids
             except Exception as e:
                 self.logger.debug(e)
+
+    def protocol_deletion(self, guid):
+        delete = DBDeleteProtocol(guid)
+        self.appDB.session.add(delete)
+        #self.appDB.session.commit() 
 
 #Testfunctions
     def inject_random_userdata(self):
