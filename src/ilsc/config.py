@@ -41,10 +41,10 @@ class Config(object):
         self.app['contactmail'] = ''
         self.app['keepdays'] = 2
         self.app['autocheckout'] = 6
-        self.app['devisions'] = ('Biergarten','bc','café','bd','bh','bi')
         self.app['imprint'] = 'default_imprint.html'
         self.app['gprd'] = 'default_gprd.html'
         self.app['cleanonstart'] = False
+        self.app['cleancron'] = 6
         self.app['timezone'] = 'Europe/Berlin'
         # Section [http]
         self.http = {}
@@ -94,10 +94,6 @@ class Config(object):
                     except AttributeError as e:
                         self.logger.warning(str(e))
                         pass
-            if self.app['devisions'] and isinstance(self.app['devisions'], str):
-                self.app['devisions'] = tuple(self.app['devisions'].split(','))
-            if self.app['autocheckout'] and isinstance(self.app['autocheckout'], str):
-                self.app['autocheckout'] = tuple(self.app['autocheckout'].split(','))
             if self.app['cleanonstart'] and isinstance(self.app['cleanonstart'], str):
                 self.app['cleanonstart'] = self.app['cleanonstart'] in ('True', 'true', '1', 1)
             self.http['usessl'] = True if self.http['usessl'] in ('True','true','1') else False 

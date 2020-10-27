@@ -13,13 +13,16 @@ import os
 import json
 import pyqrcode
 import uuid
+import flask
+from flask_login import current_user
 from twisted.web.server import Site
 from autobahn.twisted.resource import WebSocketResource, Resource
 from sqlalchemy import and_, between
+from sqlalchemy import exc
 from datetime import datetime, timedelta
 from .websocket import *
 
-from ilsc.database import DBGuest, DBCheckin, User
+from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, ILSCMeta, DBDeleteProtocol
 from ilsc import caesar
 
 from bs4 import BeautifulSoup
@@ -77,103 +80,18 @@ class decoded_guest():
 
 class Backend(object):
     '''Backend class'''
-    def __init__(self, config, flaskApp, appDatabase, superuser):
+    def __init__(self, config, flaskApp, appDB, superuser, scheduler):
         '''
         Constructs a Backend object
         '''
         self.logger = logging.getLogger(__name__)
         self.config = config
-        self.appDatabase = appDatabase
+        self.appDB = appDB
         self.flaskApp = flaskApp
         self.websocket = None
         self.superuser = superuser
         self.init_websocket()
-        
-    def checkout_all(self):
-        '''
-        Query Database an checkout all
-        '''
-        with self.flaskApp.app_context():
-            try:
-                _guests = DBCheckin.query.filter_by(checkout=None).order_by(DBCheckin.checkin.desc()).all()
-
-                for _guest in _guests:
-                    _guest.checkout=datetime.now()
-                self.appDatabase.session.commit()
-                self.logger.debug(f'Checked {len(_guests)} entries out')
-                return True, 'Checkout erfolgreich'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00003) beim Full-Checkout.'
-
-    def clean_obsolete_checkins(self):
-        '''
-        Query Database for obsolete checkin entries and delete
-        '''
-        with self.flaskApp.app_context():
-            try:
-                days = int(self.config.app['keepdays'])
-                _query = DBCheckin.query.filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
-                old_checkins = _query.all()
-                for checkin in old_checkins:
-                    self.appDatabase.session.delete(checkin)
-                self.appDatabase.session.commit()
-                self.logger.debug(f'Deleted {len(old_checkins)} entries from checkins')
-                return True, 'Löschen erfolgrreich erfolgreich'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00004) beim Checkin-Aufräumen.'
-
-    def clean_obsolete_contacts(self):
-        '''
-        clean obsolete contact data from database
-        '''
-        with self.flaskApp.app_context():
-            try:
-                active = []
-                active_checkins = DBCheckin.query.all()
-                for a in active_checkins:
-                    active.append(a.guid)
-                old_guids = DBGuest.guid.notin_(tuple(active))
-                days = int(self.config.app['keepdays'])
-                _query = DBGuest.query.filter(old_guids).filter(DBGuest.created<datetime.now()-timedelta(days=days))
-                remove_guests= _query.all()
-                codes = []
-                for r in remove_guests:
-                    codes.append(r.guid)
-                    self.appDatabase.session.delete(r)
-                self.appDatabase.session.commit()
-                if len(codes):
-                    self.delete_qr_codes(codes)
-                self.logger.debug(f'Deleted {len(remove_guests)} entries from contacts')
-                return True, 'Löschen erfolgrreich erfolgreich'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00004) beim Aufräumen.'
-
-    def delete_qr_codes(self, codes = []):
-        '''
-        delete not needed code files
-        '''
-        try:
-            for c in codes:
-                os.remove(f".//static//codes//{c.decode('utf-8')}.png")
-        except Exception as e:
-            self.logger.debug(e)
-
-    def get_all_guids(self):
-        '''
-        get all checkin guids
-        '''
-        with self.flaskApp.app_context():
-            try:
-                _guests = DBCheckin.query.all()
-                _guids = [] 
-                for _guest in _guests:
-                    _guids.append(_guest.guid)
-                return _guids
-            except Exception as e:
-                self.logger.debug(e)
+        self.scheduler = scheduler
 
     def init_websocket(self):
         '''
@@ -278,12 +196,12 @@ class Backend(object):
         '''
         with self.flaskApp.app_context():
             try:
-                _entity = entity.query.filter_by(id=eid).first()
+                _entity = self.appDB.session.query(entity).filter_by(id=eid).first()
                 if not _entity:
                     return False
                 else:
-                    self.appDatabase.session.delete(_entity)
-                    self.appDatabase.session.commit()
+                    self.appDB.session.delete(_entity)
+                    self.appDB.session.commit()
                     return True
             except Exception as e:
                 self.logger.debug(e)
@@ -306,7 +224,7 @@ class Backend(object):
         with self.flaskApp.app_context():
             try:
                 c_str = clean_strings(guid)
-                _guest = DBGuest.query.filter_by(guid=c_str).all()
+                _guest = self.appDB.session.query(DBGuest).filter_by(guid=c_str).all()
                 if not _guest:
                     return False
                 else:
@@ -325,7 +243,7 @@ class Backend(object):
                               DBCheckin.checkin+timedelta(days=1) < datetime.now(),
                               DBCheckin.checkout == None,
                               DBCheckin.devision == devision)
-                _query = DBCheckin.query.filter(lookup).order_by(DBCheckin.checkin.desc())
+                _query = self.appDB.session.query(DBCheckin).filter(lookup).order_by(DBCheckin.checkin.desc())
                 _guest = _query.first()
                 if _guest:
                     return True
@@ -350,8 +268,8 @@ class Backend(object):
                 if (guid != '' and fname != '' and sname != '' and contact != ''):
                     with self.flaskApp.app_context():
                         new_guest = DBGuest(fname = fname, sname = sname, contact = contact, guid = guid, agreed = agreed)
-                        self.appDatabase.session.add(new_guest)
-                        self.appDatabase.session.commit()
+                        self.appDB.session.add(new_guest)
+                        self.appDB.session.commit()
                     return True, ''
                 else: return False, 'Es fehlen Werte im Formular.'
             else: return False, 'So ein Zufall. Die GUID existiert bereits. Versuchs bitte nochmal.'
@@ -370,8 +288,8 @@ class Backend(object):
             if (not self.check_guid_today(guid, devision)) and (self.check_guid(guid)):
                     with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid, devision = devision)
-                        self.appDatabase.session.add(new_guest)
-                        self.appDatabase.session.commit()
+                        self.appDB.session.add(new_guest)
+                        self.appDB.session.commit()
                     return True, 'Checkin erfolgreich'
             else: return False, 'Fehler beim Checkin'
         except Exception as e:
@@ -390,11 +308,11 @@ class Backend(object):
                               DBCheckin.checkin+timedelta(days=days)<datetime.now(),
                               DBCheckin.checkout==None,
                               DBCheckin.devision == devision)
-                _query = DBCheckin.query.filter(lookup).order_by(DBCheckin.checkin.desc())
+                _query = self.appDB.session.query(DBCheckin).filter(lookup).order_by(DBCheckin.checkin.desc())
                 _guest = _query.first()
                 if _guest:
                     _guest.checkout=datetime.now()
-                    self.appDatabase.session.commit()
+                    self.appDB.session.commit()
                     return True, 'Checkout erfolgreich'
                 else:
                     return False, 'Da gabs nix für nen checkout.'
@@ -402,111 +320,399 @@ class Backend(object):
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00002) beim Checkout. Oder der wurde grad schon ausgecheckt'
 
+    def add_user(self, form, do_hash=True):
+        '''
+        add new user to database
+        '''
+        #TODO: User Form as passed argument
+        try:
+            username=form.username.data
+            password=form.password.data
+            if form.devision != None:
+                devision = form.devision.data
+            else:
+                devision = form.location_id
+            if form.roles != None:
+                selected_roles = form.roles.data if bool(form.roles.data) else []
+                selected_roles.sort()
+                new_roles = Roles.get_roles_by_ids(selected_roles) 
+            else:
+                new_roles =  Roles.get_roles_by_ids(form.role_list)
+            new_user = User(username, password, devision, do_hash=do_hash)
+            new_user.roles.extend(new_roles)
+            self.appDB.session.add(new_user)
+            self.appDB.session.commit()
+            return True, f'Nutzer "{username}" wurde angelegt'
+        except exc.IntegrityError as ie:
+            return False, f'Integrity-Error. Code: {ie.code}. Benutzername existiert bereits.'
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
+
     def update_user(self, uid, form):
         '''
-        Query Database if guid exists in checkin and update @ checkout time
+        Update user data from form values based on id
         '''
-        with self.flaskApp.app_context():
-            try:
-                user = User.query.filter_by(id=int(uid)).first()
-                user.username = clean_strings(form.username.data).decode('utf-8')
-                user.devision = int(form.devision.data)
-                #keep superuser the superuser
-                user.isadmin = True if int(uid) == self.superuser else form.isadmin.data
-                if self.appDatabase.session.is_modified(user):
-                    self.appDatabase.session.commit()
-                    return True, f'"{user.username}" erfolgreich geändert'
-                return True, f'Für "{user.username}" hat sich nichts geändert.'
-            except Exception as e:
-                self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
+        try:
+            selected_roles = form.roles.data if bool(form.roles.data) else []
+            selected_roles.sort()
+            new_roles = Roles.get_roles_by_ids(selected_roles)
+
+            user = self.get_user_by_id(uid=int(uid))
+            user.username = clean_strings(form.username.data).decode('utf-8')
+            user.devision = int(form.devision.data)
+
+            user.roles.clear()
+            user.roles.extend(new_roles)
+            #TODO: keep superuser 1 the superuser
+            #user.isadmin = True if user.id == self.superuser else form.isadmin.data
+            #Need to check if selected roles is empty since then is_modified becomes True
+            if self.appDB.session.is_modified(user):
+                self.appDB.session.commit()
+                return True, f'"{user.username}" erfolgreich geändert'
+            return True, f'Für "{user.username}" hat sich nichts geändert.'
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
             
     def update_password(self, uid, form):
         '''
-        Query Database if guid exists in checkin and update @ checkout time
+        Update user password from form value based on id
+        '''
+        try:
+            user = self.get_user_by_id(uid=int(uid))
+            user.set_password(form.password.data, do_hash=True)
+            if self.appDB.session.is_modified(user):
+                #user.password = '123456'
+                self.appDB.session.commit()
+                
+            return True, f'Passwort für "{user.username}" erfolgreich geändert'
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
+
+    def delete_user(self, uid):
+        '''
+        Delete user from db
+        '''
+        #with self.flaskApp.app_context():
+        user = self.get_user_by_id(uid=int(uid))
+        if user:
+            self.appDB.session.delete(user)
+            self.appDB.session.commit()
+
+    def get_user_by_id(self, uid):
+        '''
+        Query Database for user based on id
+        '''
+        try:
+            
+            user = self.appDB.session.query(User).filter_by(id=int(uid)).first()
+            if user:
+                return user
+            else:
+                return None
+        except Exception as e:
+            self.logger.debug(e)
+            return None
+
+    def get_current_user(self):
+        '''
+        Query Database for user based on guid of active user
+        '''
+        if not current_user.is_authenticated: return None
+        if not flask.session['_user_id']: return None
+        
+        try:
+            user = self.appDB.session.query(User).filter_by(userid=str(flask.session['_user_id'])).first()
+            if user:
+                return user
+            else:
+                return None
+        except Exception as e:
+            self.logger.debug(e)
+
+    def get_all_user_roles(self, plain = False):
+        '''
+        Query Database for user location based on uuid
+        '''
+        try:
+            with self.flaskApp.app_context():
+                roles = self.appDB.session.query(Roles).all()
+                #self.appDB.session.close()
+                if plain:
+                    return roles
+                if roles:
+                    all_roles = { r.id : r.name for r in roles }
+                    return all_roles
+                else:
+                    return []
+        except Exception as e:
+            self.logger.debug(e)
+            return []
+
+    def get_current_user_roles(self, other_user = None):
+        '''
+        Query Database for user location based on uuid
+        '''
+        try:
+            user = self.get_current_user() if other_user == None else other_user
+            if user:
+                user_roles = { ur.id : ur.name for ur in user.roles }
+                return user_roles
+            else:
+                return {}
+        except Exception as e:
+            self.logger.debug(e)
+            return {}
+
+    def check_superuser(self):
+        '''
+        Query Database for user location based on uuid
+        '''
+        try:
+            user_roles = self.get_current_user().get_roles().values()
+            if user_roles and "SuperUser" in user_roles:
+                return True
+            else:
+                return False
+        except Exception as e:
+            self.logger.debug(e)
+            return False
+
+    def get_current_user_location(self):
+        '''
+        Query Database for user location based on uuid
+        '''
+        try:
+            user = self.get_current_user()
+            if user:
+                return user.devision
+            else:
+                return None
+        except Exception as e:
+            self.logger.debug(e)
+            return None
+
+    def get_location_organisation(self, lid):
+        '''
+        return organisation associated to given location id
+        '''
+        oid = self.fetch_element_by_id(DBLocations, lid)
+        return oid.organisation if oid else None
+
+    def get_organisations(self):
+        try:
+            orgs = DBOrganisations.query.all()
+            if orgs:
+                all_orgs = { o.id : o.name for o in orgs }
+                return all_orgs
+            else:
+                return []
+        except Exception as e:
+            self.logger.debug(e)
+            return []
+
+    def get_organisation_locations(self, orgid):
+        '''
+        Query Database for locations by organisation id
         '''
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(id=int(uid)).first()
-                user.set_password(form.password.data, do_hash=True)
-                if self.appDatabase.session.is_modified(user):
-                    self.appDatabase.session.commit()
-                    return True, f'"{user.username}" erfolgreich geändert'
-                return True, f'Für "{user.username}" hat sich nichts geändert.'
+                name = DBLocations.name.label("name")
+
+                _query = self.appDB.session.query(DBLocations)\
+                                        .filter_by(organisation=orgid)\
+                                        .order_by(name)
+                locations = _query.all()
+
+                if locations:
+                    ldict = {}
+                    for l in locations:
+                        ldict[str(l.id)] = l.name
+                    
+                    return locations, ldict
+                else:
+                    return [], {}
             except Exception as e:
                 self.logger.debug(e)
-                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
+                return [], {}
 
-    def fetch_user(self, uid):
+    def get_organisation_users(self, uid):
         '''
-        Query Database for user based on guid
+        Query for users belonging to current session user organisation
+        '''
+        try:
+            _, locdict = self.get_organisation_locations(uid)
+            #users = ilsc.User.query.all()
+            _query = self.appDB.session.query(User).filter(User.devision.in_(locdict.keys())).order_by(User.username)
+            users = _query.all()
+            if users:
+                return users, locdict
+            else:
+                return [],{}
+        except Exception as e:
+            self.logger.debug(e)
+            return [],{}
+
+    def check_organisation_permission(self, _test_loc):
+        '''
+        Check if user is allowed to access organisation infos
         '''
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(id=int(uid)).first()
-                if user:
-                    return user
+                _user_loc = self.get_current_user_location()
+                _user_org = self.get_location_organisation(_user_loc)
+                _test_org = self.get_location_organisation(_test_loc)
+                return _user_org == _test_org
+
+            except Exception as e:
+                self.logger.debug(e)
+                return False
+
+    def fetch_element_by_id(self, element, eid):
+        '''
+        Query Database for element based on id
+        '''
+        with self.flaskApp.app_context():
+            try:
+                result = element.query.filter_by(id=int(eid)).first()
+                if result:
+                    return result
                 else:
                     return None
             except Exception as e:
                 self.logger.debug(e)
                 return None
 
-    def add_user(self, username, password, devision, isadmin=False, do_hash=True):
+    def add_organisation(self, form, upgrade = False):
         '''
         add user to database
         '''
         try:
-            with self.flaskApp.app_context():
-                new_user = User(username, password, devision, isadmin=isadmin, do_hash=do_hash)
-                self.appDatabase.session.add(new_user)
-                self.appDatabase.session.commit()
+            #with self.flaskApp.app_context():
+            new_org = DBOrganisations(form.name.data)
+            self.appDB.session.add(new_org)
+            self.appDB.session.flush()
+            self.appDB.session.commit()
+            
+            #Dont use self.add_location to retrieve locationid better
+            new_loc = DBLocations(form.locationname.data, new_org.id,checkouts=form.checkouts.data)
+            self.appDB.session.add(new_loc)
+            self.appDB.session.flush()
+            self.appDB.session.commit()
+            self.update_scheduler(new_loc)
+            form.location_id = new_loc.id
+            #TODO: bring get_all_user_roles together with other stuff
+            if upgrade == False:
+                form.role_list = [k for k in self.get_all_user_roles().keys() if k != 1 ] 
+            else:
+                form.role_list = [k for k in self.get_all_user_roles().keys()]
+            self.add_user(form)
             return True, ''
         except Exception as e:
             self.logger.debug(e)
             return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
 
-    def delete_user(self, _userid):
+    def fetch_element_lists(self, element):
+        #REMINDER: keep this function for debug queries
         '''
-        Delete user from db
-        '''
-        with self.flaskApp.app_context():
-            user = User.query.filter_by(id=int(_userid)).first()
-            if user:
-                self.appDatabase.session.delete(user)
-                self.appDatabase.session.commit()
-
-    def check_admin(self, uid):
-        '''
-        Query Database for user based on guid
+        Query Database for connections via type
         '''
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(userid=str(uid)).first()
-                if user:
-                    return user.isadmin
+                eid = element.id.label("id")
+                name = element.name.label("name")
+
+                _query = self.appDB.session.query(eid, name)\
+                                               .order_by(eid)
+                elements = _query.all()
+
+                if elements:
+                    elist = []
+                    edict = {}
+                    for e in elements:
+                        elist.append((str(e.id),e.name))
+                        edict[str(e.id)] = e.name
+                    
+                    return elist, edict
                 else:
-                    return False
+                    return [],{}
             except Exception as e:
                 self.logger.debug(e)
-                return False
+                return [],{}
 
-    def get_user_devision(self, uid):
+    def update_organisation(self, oid, form):
         '''
-        Query Database for user based on guid
+        update db organisation data
         '''
         with self.flaskApp.app_context():
             try:
-                user = User.query.filter_by(userid=str(uid)).first()
-                if user:
-                    return user.devision
-                else:
-                    return None
+                organisation = self.appDB.session.query(DBOrganisations).filter_by(id=int(oid)).first()
+                organisation.name = form.name.data #clean_strings(form.name.data).decode('utf-8')
+
+                if self.appDB.session.is_modified(organisation):
+                    self.appDB.session.commit()
+                    return True, f'"{organisation.name}" erfolgreich geändert'
+                return True, f'Für "{organisation.name}" hat sich nichts geändert.'
             except Exception as e:
                 self.logger.debug(e)
-                return None
+                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
 
-    def fetch_guests(self, date, devision = None):
+    def get_locations(self):
+        '''
+        Query Database for locations
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _query = self.appDB.session.query(DBLocations)\
+                                               .order_by(DBLocations.id)
+                locations = _query.all()
+
+                if locations:
+                    return locations
+                else:
+                    return []
+            except Exception as e:
+                self.logger.debug(e)
+                return []
+
+    def add_location(self, name, organisation, checkouts):
+        '''
+        add user to database
+        '''
+        try:
+            with self.flaskApp.app_context():
+                new_loc = DBLocations(name, organisation=int(organisation), checkouts=checkouts)
+                self.appDB.session.add(new_loc)
+                self.appDB.session.commit()
+                self.update_scheduler(new_loc)
+            return True, f'"{name}" erfolgreich hinzugefügt.'
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
+
+    def update_location(self, lid, form):
+        '''
+        update db location data
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _location = self.appDB.session.query(DBLocations).filter_by(id=int(lid)).first()
+                #location.name = form.name.data
+                _location.name = clean_strings(form.name.data).decode('utf-8')
+                _location.checkouts = form.checkouts.data
+
+                if self.appDB.session.is_modified(_location):
+                    self.appDB.session.commit()
+                    self.update_scheduler(_location)
+                    return True, f'"{_location.name}" erfolgreich geändert'
+                return True, f'Für "{_location.name}" hat sich nichts geändert.'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00005) Konnte user nicht ändern'
+
+    def fetch_guests(self, date, locations = None):
         '''
         Query Database for guests based on date
         '''
@@ -522,11 +728,12 @@ class Backend(object):
 
                 start = date.strftime("%Y-%m-%d")
                 end = (date+timedelta(days=1)).strftime("%Y-%m-%d")
-                _query = self.appDatabase.session.query(guestuid, fname, sname, contact, checkin, checkout, devision)\
+                _query = self.appDB.session.query(guestuid, fname, sname, contact, checkin, checkout, devision)\
                                                .filter(and_(guestuid == DBCheckin.guid,
-                                                            between(checkin, start, end)
+                                                            between(checkin, start, end),
+                                                            devision.in_(locations)
                                                             ))\
-                                               .order_by(checkin)
+                                               .order_by(devision, checkin)
                 guests = _query.all()
 
                 if guests:
@@ -593,14 +800,14 @@ class Backend(object):
                 _lookup = and_(DBCheckin.checkin+timedelta(days=1) < datetime.now(),
                               DBCheckin.checkout == None,
                               DBCheckin.devision == devision)
-                _query = DBCheckin.query.filter(_lookup).order_by(DBCheckin.checkin.desc())
+                _query = self.appDB.session.query(DBCheckin).filter(_lookup).order_by(DBCheckin.checkin.desc())
                 _guests = _query.all()
                 return len(_guests)
             except Exception as e:
                 self.logger.debug(e)
                 return 0
 
-    def fetch_visits(self,guid):
+    def fetch_visits(self,guid,locations):
         '''
         Query Database for guest visits
         '''
@@ -611,8 +818,10 @@ class Backend(object):
                 _checkout = DBCheckin.checkout.label("checkout")
                 _devision = DBCheckin.devision.label("devision")
 
-                _query = self.appDatabase.session.query(_guestuid, _checkin, _checkout, _devision)\
-                                               .filter(_guestuid == guid.encode('utf-8'))\
+                _query = self.appDB.session.query(_guestuid, _checkin, _checkout, _devision)\
+                                               .filter(and_(_guestuid == guid.encode('utf-8'),
+                                                           DBCheckin.devision.in_(locations))
+                                                      )\
                                                .order_by(_checkin)
                 visits = _query.all()
 
@@ -671,6 +880,178 @@ class Backend(object):
         qr_code.png(".//static//codes//{}.png".format(guid), scale=scale, module_color=[0, 0, 0], background=[255, 255, 255])
         return qr_code
 
+    def upgrade(self):
+        #TODO: Keep this here only as long as needed (alpha>beta!>ceta)
+        try:
+            super_role = Roles(name='SuperUser')
+            visit_role = Roles(name='VisitorAdmin')
+            admin_role = Roles(name='UserAdmin')
+            location_role = Roles(name='LocationAdmin')
+            self.appDB.session.commit()
+
+            firstuser = self.get_current_user()
+            if firstuser:
+                firstuser.roles = [super_role, visit_role, admin_role, location_role]
+                self.appDB.session.commit()
+    
+                self.appDB.session.add(firstuser)
+                self.appDB.session.commit()
+            else:
+                raise Exception("Sorry, there is no user available. Can not perfom db upgrade")
+
+            organisation = DBOrganisations(oid = 0,
+                                name='Mainorganisation')
+            self.appDB.session.add(organisation)
+            self.appDB.session.commit()
+            
+            result = self.appDB.session.query(User.devision).distinct(User.devision).all()
+            if result:
+                for r in list(result):
+                    location = DBLocations(lid = r[0],
+                                        name=f'Location_{r[0]}',
+                                        organisation = 0)
+                    self.appDB.session.add(location)
+                    self.appDB.session.commit()
+
+            result = self.appDB.session.query(ILSCMeta).first()
+            if result:
+                result.version = '0.5'
+                result.created = datetime.utcnow()
+                self.appDB.session.commit()
+            return True, 'Upgrade successful. Now configure autoleaves, locationnames and user roles if needed.'
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Upgrade failed. Hope you made a backup.'
+
+    def init_schedulers(self):
+        '''
+        Query Database for locations an init cron for scheduler tas
+        '''
+        with self.flaskApp.app_context():
+            _locs = self.get_locations()
+            for l in _locs:
+                if l.checkouts:
+                    self.update_scheduler(l)
+
+    def update_scheduler(self, _loc):
+        '''
+        update jobs
+        '''
+        try:
+            if not _loc.checkouts == None:
+                _job = self.scheduler.get_job(job_id=f"location_{_loc.id}")
+                if _job:
+                    self.scheduler.reschedule_job(job_id=f"location_{_loc.id}", trigger='cron', hour=_loc.checkouts, minute=0)
+                else:
+                    self.scheduler.add_job(self.checkout_all, 'cron', args=[_loc.id], id=f"location_{_loc.id}", hour=_loc.checkouts, minute=0)
+                self.logger.info(f'Checkout(s) {_loc.checkouts} Uhr für {_loc.name} eingerichtet.')
+        except Exception as e:
+            self.logger.debug(e)
+            return False, 'Schwerer Fehler (x00010) beim task update.'
+
+    def cleanup_everything(self):
+        '''
+        check and clean database
+        '''
+        self.clean_obsolete_checkins()
+        self.clean_obsolete_contacts()
+
+    def checkout_all(self, lid = None):
+        '''
+        Query Database an checkout all and fuckin check them out regardless
+        '''
+        with self.flaskApp.app_context():
+            try:
+                if not lid:
+                    _guests = self.appDB.session.query(DBCheckin).filter_by(checkout=None).order_by(DBCheckin.checkin.desc()).all()
+                else:
+                    _guests = self.appDB.session.query(DBCheckin).filter_by(checkout=None, devision = lid).order_by(DBCheckin.checkin.desc()).all()
+
+                for _guest in _guests:
+                    _guest.checkout=datetime.now()
+                self.appDB.session.commit()
+                self.logger.debug(f'Checked {len(_guests)} entries out')
+                return True, 'Checkout erfolgreich'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00003) beim Full-Checkout.'
+
+    def clean_obsolete_checkins(self):
+        '''
+        Query Database for obsolete checkin entries and delete
+        '''
+        with self.flaskApp.app_context():
+            try:
+                days = int(self.config.app['keepdays'])
+                _query = self.appDB.session.query(DBCheckin).filter(DBCheckin.checkin<datetime.now()-timedelta(days=days))
+                old_checkins = _query.all()
+                for checkin in old_checkins:
+                    self.appDB.session.delete(checkin)
+                self.appDB.session.commit()
+                self.logger.debug(f'Deleted {len(old_checkins)} entries from checkins')
+                return True, 'Löschen erfolgrreich erfolgreich'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00004) beim Checkin-Aufräumen.'
+
+    def clean_obsolete_contacts(self):
+        '''
+        clean obsolete contact data from database
+        '''
+        with self.flaskApp.app_context():
+            try:
+                active = []
+                active_checkins = self.appDB.session.query(DBCheckin).all()
+                for a in active_checkins:
+                    active.append(a.guid)
+                old_guids = DBGuest.guid.notin_(tuple(active))
+                days = int(self.config.app['keepdays'])
+                _query = self.appDB.session.query(DBGuest).filter(old_guids).filter(DBGuest.created<datetime.now()-timedelta(days=days))
+                remove_guests= _query.all()
+                codes = []
+                for r in remove_guests:
+                    codes.append(r.guid)
+                    self.appDB.session.delete(r)
+                    self.protocol_deletion(r.guid)
+
+                self.appDB.session.commit()
+                if len(codes):
+                    self.delete_qr_codes(codes)
+                self.logger.debug(f'Deleted {len(remove_guests)} entries from contacts')
+                return True, 'Löschen erfolgrreich erfolgreich'
+            except Exception as e:
+                self.logger.debug(e)
+                return False, 'Schwerer Fehler (x00004) beim Aufräumen.'
+
+    def delete_qr_codes(self, codes = []):
+        '''
+        delete not needed code files
+        '''
+        try:
+            for c in codes:
+                os.remove(f".//static//codes//{c.decode('utf-8')}.png")
+        except Exception as e:
+            self.logger.debug(e)
+
+    def get_all_guids(self):
+        '''
+        get all checkin guids
+        '''
+        with self.flaskApp.app_context():
+            try:
+                _guests = self.appDB.session.query(DBCheckin).all()
+                _guids = [] 
+                for _guest in _guests:
+                    _guids.append(_guest.guid)
+                return _guids
+            except Exception as e:
+                self.logger.debug(e)
+
+    def protocol_deletion(self, guid):
+        delete = DBDeleteProtocol(guid)
+        self.appDB.session.add(delete)
+        #self.appDB.session.commit() 
+
 #Testfunctions
     def inject_random_userdata(self):
         for _ in range(0,100):
@@ -691,8 +1072,8 @@ class Backend(object):
             if not self.check_guid(guid):
                 with self.flaskApp.app_context():
                     new_guest = DBGuest(fname = fname, sname = sname, contact = contact, guid = guid, agreed = agreed)
-                    self.appDatabase.session.add(new_guest)
-                    self.appDatabase.session.commit()
+                    self.appDB.session.add(new_guest)
+                    self.appDB.session.commit()
                 self.test_guest_checkin(guid)
             else: 
                 print('So ein Zufall. Die GUID existiert bereits. Versuchs bitte nochmal.')
@@ -708,8 +1089,8 @@ class Backend(object):
             if (not self.check_guid_today(guid, 0)) and (not self.check_guid(guid)):
                     with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid)
-                        self.appDatabase.session.add(new_guest)
-                        self.appDatabase.session.commit()
+                        self.appDB.session.add(new_guest)
+                        self.appDB.session.commit()
                     return True, 'Checkin erfolgreich'
             else: return False, 'Fehler beim Checkin'
         except Exception as e:

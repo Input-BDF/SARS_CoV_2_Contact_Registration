@@ -13,7 +13,7 @@
 				<div>Besuch</div>
 				<div >(in/out)</div>
 			</div>
-			<div class="col col-3">Sektion</div>
+			<div class="col col-3">Location</div>
 		</div>
 		{% if visits: %}
 			{% for visit in visits %}
@@ -22,14 +22,15 @@
 					<form action="{{ url_for('r_guests') }}" method="post" target="_blank">
 						{{ form.csrf_token }}
 						<input type="text" name="visitdate" value="{{ visit.day }}">
-						<input id="submit" type="submit" value="&#128269;" title="Alle Besucher anzeigen">
+						<input type="text" name="location" value="{{ visit.devision }}">
+						<input id="submit" type="submit" value="&#128269;" title="Alle Besucher vom {{ visit.day }} anzeigen">
 					</form>
 					</div>
 					<div class="timecol col col-2">
 						<div>{{ visit.checkin }}</div>
 						<div>{{ visit.checkout }}</div>
 					</div>
-					<div class="col col-3">{{ devisions[visit.devision] }}</div>
+					<div class="col col-3">{{ loc[visit.devision|string] }}</div>
 				</div>
 			{% endfor %}
 		{% endif %}

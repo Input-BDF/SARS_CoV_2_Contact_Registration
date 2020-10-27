@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 
 {% block body %}
-<form id="userform" method="POST" action="{{ action }}">
+<form id="locform" method="POST" action="{{ action }}">
 	{% if msg: %}
 	<div id="warning">{{ msg|safe }}</div>
 	{% endif %}
@@ -20,7 +20,7 @@
 	{% endfor %}
 	<div id="actions">
 		<input id="submit" type="submit" value="Speichern">
-		<a href="{{ url_for('r_users') }}"><button type="button" formnovalidate>Abbrechen</button></a>
+		<a href="{{ url_for('r_locations') }}"><button type="button" formnovalidate>Abbrechen</button></a>
 	</div>
 </form>
 {% endblock %}

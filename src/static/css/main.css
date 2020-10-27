@@ -84,7 +84,7 @@ div#header {
 div#content {
 	padding: 10px;
 	background-color: #202020;
-	color: rgba(255, 255, 255, 0.5);
+	color: rgba(255, 255, 255, 0.7);
 }
 
 div#menu,
@@ -112,7 +112,10 @@ form#regform #warning {
 form#regform #warning a{
 	color: #f00;
 	}
-	
+
+
+form#orgform > label,
+form#locform > label,
 form#userform > label,
 form#regform > label {
 	display: block;
@@ -181,6 +184,10 @@ div.checkbox label input {
 	font-weight:bolder;
 }
 
+#actions {
+	margin-top: 20px;
+}
+
 #info {
 	text-align: center;
 	padding: 5px;
@@ -206,11 +213,15 @@ div.checkbox label input {
 }
 
 #header h1 {
-	background-color:rgba(255,255,255,0.8);
 	color:#d46a6a;
 	text-align:center;
+	margin: 0px;
 }
 
+#header h1 img {
+	width: auto;
+	max-height: 123px;
+	}
 form#regform {
 	margin:auto;
 	max-width:425px;
@@ -349,4 +360,52 @@ vertical-align: top;
 	width: 100%;
 	cursor: pointer;
 	padding:0px;
+}
+.roletitle { cursor: help;}
+.btn_option > a,
+.btn_option > a > button {
+	display: block;
+	width: 100%;
+}
+.optionstable {width: 100%;}
+
+#usertable tr:hover,
+#orgtable tr:hover,
+#loctable tr:hover { background-color: #222;}
+
+ul#roles {
+	list-style: none;
+	padding: 0px;
+	margin-top: 5px;
+}
+
+.tooltip {
+	position: relative;
+	display: inline-block;
+	color: #fff;
+	margin-left: 4px;
+	background-color: #500;
+	width: 20px;
+	height: 20px;
+	text-align: center;
+	border-radius: 10px;
+}
+
+.tooltip .tooltiptext {
+	padding: 10px;
+	visibility: hidden;
+	width: 120px;
+	background-color: black;
+	color: #fff;
+	text-align: left;
+	border-radius: 6px;
+	padding: 5px 10px;
+	font-size: 0.7em;
+	position: absolute;
+	z-index: 1;
+}
+
+.tooltip:focus .tooltiptext,
+.tooltip:hover .tooltiptext {
+    visibility: visible;
 }

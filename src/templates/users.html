@@ -1,35 +1,38 @@
 {% extends "main.html" %}
 {% block body %}
 {% if msg: %}
-	{% for t,m in msg.items() %}
-		<div id="info" class="{{ t }}">{{ m|safe }}</div>
-	{% endfor %}
+  {% for t,m in msg.items() %}
+    <div id="info" class="{{ t }}">{{ m|safe }}</div>
+  {% endfor %}
 {% endif %}
-<table>
+<table id="usertable" class="optionstable">
 <tbody>
 <tr>
   <th>Nutzer</th>
-  <th>Sektion</th>
-  <th>Admin</th>
-  <th style="width:5%;">&nbsp;</th>
-  <th style="width:11%;">&nbsp;</th>
-  <th style="width:5%;">&nbsp;</th>
+  <th>Location</th>
+  <th>Rollen</th>
+  <th style="width:21%;" class="btn_option"><a href="{{ url_for('r_user_add') }}"><button>Add User</button></a></th>
 </tr>
 {% for user in users %}
-<tr>
-  <td>{{ user.username }}</td>
-  <td>{{ dev[user.devision] }}</td>
-  <td>
-  {% if user.isadmin: %}
-    &#10004;
+  {% if (not user.is_superuser() and not 1 in roles) or ( 1 in roles ) %}
+    <tr>
+      <td>{{ user.username }}</td>
+      <td>{{ loc[user.devision|string] }}</td>
+      <td>
+      {% for role in sort_roles(user.roles) %}
+          <span class="roletitle" title="{{ role }}">{{ role[:1]  }}</span>
+      {% endfor %}
+      </td>
+      <td>
+          <div class="btn_option"><a href="{{ url_for('r_user_edit', uid=user.id) }}"><button>Edit</button></a></div>
+          <div class="btn_option"><a href="{{ url_for('r_user_passwd', uid=user.id) }}"><button>Password</button></a></div>
+          {% if user.id != 1 %}
+            <div class="btn_option"><a href="{{ url_for('r_user_delete', uid=user.id) }}"><button>Delete</button></a></div>
+          {% endif %}
+      </td>
+    </tr>
   {% endif %}
-  </td>
-  <td><a href="{{ url_for('r_user_edit', uid=user.id) }}"><button>Edit</button></a></td>
-  <td><a href="{{ url_for('r_user_passwd', uid=user.id) }}"><button>Change PW</button></a></td>
-  <td><a href="{{ url_for('r_user_delete', uid=user.id) }}"><button>Delete</button></a></td>
-</tr>
 {% endfor %}
 </tbody>
 </table>
-<a href="{{ url_for('r_user_add') }}"><button>Add User</button></a>
 {% endblock %}

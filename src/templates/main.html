@@ -3,8 +3,8 @@
 	<head>
 		<meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<link rel="shortcut icon" href="{{ url_for('static', filename='images/ilsc_32x32.png') }}" type="image/png">
-		<title>ILSC e.V. Checkin</title>
+		<link rel="shortcut icon" href="{{ url_for('static', filename='images/racoon_32x32.png') }}" type="image/png">
+		<title>RacoonTrace - Contact registration</title>
 		<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" type="text/css" media="screen" />
 		{% if request.endpoint == 'r_getqr' %}
 			<link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}" type="text/css" media="print" >
@@ -15,19 +15,34 @@
 		<div id="topbg"></div>
 			<div id="main">
 				<div id="header">
-					<h1>ILSC e.V. Checkin</h1>
+					<h1><img src="{{ url_for('static', filename='images/racoontrace.png') }}"/></h1>
 				</div>
 				{% if is_admin %}
 					<div id="menu">
 						<span class="bio">&#9763;</span>
 						<a href="{{ url_for('r_scanning') }}">Scan</a>
 						<span class="bio">&#9763;</span>
-						<a href="{{ url_for('r_users') }}">User</a>
-						<span class="bio">&#9763;</span>
+						{% if 2 in roles or 1 in roles %}
 						<a href="{{ url_for('r_guests') }}">G&auml;ste</a>
 						<span class="bio">&#9763;</span>
-						<a href="{{ url_for('r_signout') }}">Logout</a>
+						{% endif %}
+						{% if 3 in roles or 1 in roles  %}
+						<a href="{{ url_for('r_users') }}">User</a>
 						<span class="bio">&#9763;</span>
+						{% endif %}
+						{% if 4 in roles or 1 in roles  %}
+						<a href="{{ url_for('r_locations') }}">Locations</a>
+						<span class="bio">&#9763;</span>
+						{% endif %}
+						{% if 1 in roles %}
+						<a href="{{ url_for('r_organisations') }}">Organisations</a>
+						<span class="bio">&#9763;</span>
+						{% endif %}
+						{% if 1 in roles %}
+						<a href="{{ url_for('r_organisation_switch') }}">Switch Org</a>
+						<span class="bio">&#9763;</span>
+						{% endif %}
+						<a href="{{ url_for('r_signout') }}">Logout ({{ name }})</a>
 					</div>
 				{% endif %}
 				<div id="content">

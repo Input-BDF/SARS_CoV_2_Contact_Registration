@@ -1,0 +1,5 @@
+SQLALCHEMY_DATABASE_URI = 'sqlite:///ilsc.db'
+SQLALCHEMY_RECORD_QUERIES = False
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+SECRET_KEY = 'insertyoursecretkeyhere'
+DEBUG = True

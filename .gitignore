@@ -1,4 +1,5 @@
 /src/static/js/instascan/instascan-master
+/src/migrations
 /.pydevproject
 /.project
 __pycache__
@@ -16,5 +17,4 @@ __pycache__
 /src/keys/public_key.pub
 /src/migrations
 /src/migrate.cfg
-/src/migrate.py
 /src/static/codes/*.png

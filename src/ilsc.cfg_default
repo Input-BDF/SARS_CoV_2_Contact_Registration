@@ -4,13 +4,11 @@ template_folder = ./templates
 contactmail = <enteryourmailhere>
 #Keep data for given days
 keepdays = 28
-#run autocheckout at hour of day
-autocheckout = 16,22
-#komma separated list of devisions; used when there are multiple locations
-devisions = Biergarten,bc,café,bd,bh,bi
 imprint = default_imprint.html
 gprd = default_gprd.html
 cleanonstart = False
+#Cron running to check obsolete data
+cleancron = 6
 timezone = Europe/Berlin
 
 [http]

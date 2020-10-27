@@ -8,6 +8,7 @@
 <form action="#" method="post">
 	{{ form.csrf_token }}
 	{{ form.visitdate(class='datepicker') }}
+	{{ form.location }}
 	<input id="submit" type="submit" value="Anzeigen">
 </form>
 <div>
@@ -25,13 +26,13 @@
 				<div>Besuch</div>
 				<div >(in/out)</div>
 			</div>
-			<div class="col col-4">Sektion</div>
+			<div class="col col-4">Location</div>
 		</div>
 		{% if guests: %}
 			{% for guest in guests %}
 				<div class="guestrow row">
 					<div class="namecol col col-1">
-						<div><a href="{{ url_for('r_visits', guid = guest.guid) }}" target="_blank" title="Alle Besuche anzeigen">&#128197; </a>{{ guest.sname | safe }}</div>
+						<div><a href="{{ url_for('r_visits', guid = guest.guid) }}" target="_blank" title="Alle Besuche des Kontakts anzeigen">&#128197; </a>{{ guest.sname | safe }}</div>
 						<div>{{ guest.fname | safe }}</div>
 					</div>
 					<div class="col col-2">{{ guest.contact | safe }}</div>
@@ -39,7 +40,7 @@
 						<div>{{ guest.checkin }}</div>
 						<div>{{ guest.checkout }}</div>
 					</div>
-					<div class="col col-4">{{ devisions[guest.devision] }}</div>
+					<div class="col col-4">{{ loc[guest.devision|string] }}</div>
 				</div>
 			{% endfor %}
 		{% endif %}

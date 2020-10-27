@@ -1,0 +1,25 @@
+{% extends "main.html" %}
+{% block body %}
+{% if msg: %}
+	{% for t,m in msg.items() %}
+		<div id="info" class="{{ t }}">{{ m|safe }}</div>
+	{% endfor %}
+{% endif %}
+<table id="loctable" class="optionstable">
+<tbody>
+<tr>
+  <th>Location</th>
+  <th>Autoleave</th>
+  <th style="width:16%;" colspan="2" class="btn_option"><a href="{{ url_for('r_location_add') }}"><button>Add Location</button></a></th>
+</tr>
+{% for loc in locations %}
+<tr>
+  <td>{{ loc.name }}</td>
+  <td>{{ loc.checkouts }}</td>
+  <td class="btn_option"><a href="{{ url_for('r_location_edit', lid=loc.id) }}"><button>Edit</button></a></td>
+  <td class="btn_option"><a href="{{ url_for('r_location_delete', lid=loc.id) }}"><button>Delete</button></a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endblock %}

@@ -7,70 +7,83 @@ Created on 06.06.2020
 
 __all__ = [
     # global objects
-    'appDatabase',
+    'appDB',
     # classes
     'User',
+    'Roles',
+    'UserRoles',
     'DBGuest',
     'DBCheckin',
+    'DBDeleteProtocol',
+    'DBOrganisations',
+    'DBLocations',
     # methods
     'check_database',
     'init_database'
 ]
+
 import uuid, hashlib
 #import flask_sqlalchemy
 import flask_login
 from sqlalchemy_utils import database_exists
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 
-appDatabase = SQLAlchemy()
+appDB = SQLAlchemy()
 
-class ILSCMeta(appDatabase.Model):
+class ILSCMeta(appDB.Model):
     '''
     metadata
     '''
     __tablename__ = 'meta_data'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    version = appDatabase.Column(appDatabase.Text(16))
-    created = appDatabase.Column(appDatabase.DateTime)
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    version = appDB.Column(appDB.Text(16))
+    created = appDB.Column(appDB.DateTime)
     ##
     # Public methods
     ##
     def __init__(self):
-        self.version = '0.4'
+        self.version = '0.5'
         self.created = datetime.utcnow()
     def __repr__(self):
         return '<ILSCMeta %r>' % (self.version)
 
-class User(appDatabase.Model, flask_login.UserMixin):
+class User(appDB.Model, flask_login.UserMixin):
     '''
     user database
     '''
     __tablename__ = 'user'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    userid = appDatabase.Column(appDatabase.String(128))
-    username = appDatabase.Column(appDatabase.String(32), unique=True)
-    devision = appDatabase.Column(appDatabase.Integer, default = 0)
-    isadmin = appDatabase.Column(appDatabase.Boolean, default = False)
-    salt = appDatabase.Column(appDatabase.String(32))
-    password = appDatabase.Column(appDatabase.String(128))
-    created = appDatabase.Column(appDatabase.DateTime)
-    active = appDatabase.Column(appDatabase.Boolean)
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    userid = appDB.Column(appDB.String(128))
+    username = appDB.Column(appDB.String(32), unique=True)
+    devision = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_locations.id', ondelete='CASCADE'))
+    salt = appDB.Column(appDB.String(32))
+    password = appDB.Column(appDB.String(128))
+    created = appDB.Column(appDB.DateTime)
+    active = appDB.Column(appDB.Boolean)
+    
+    roles = appDB.relationship('Roles', secondary='user_roles',
+                                lazy='subquery',
+                                backref=appDB.backref('user', lazy='dynamic'))
+    
+    location = appDB.relationship('DBLocations', foreign_keys=devision, post_update=True, lazy='subquery')
     ##
     # Public methods
     ##
-    def __init__(self, username, password, devision=0, salt=None, isadmin = False, do_hash=True):
+    def __init__(self, username, password, devision=0, salt=None, do_hash=True):
         self.salt = salt if salt else self.__salt()
         self.set_username(username)
         self.set_password(password, do_hash)
         self.devision=devision
-        self.isadmin = isadmin
         self.created = datetime.utcnow()
         self.active = True
+
     def __repr__(self):
         return '<User %r>' % (self.username)
+
     def __call__(self):
         return {
             'username': self.username,
@@ -80,15 +93,35 @@ class User(appDatabase.Model, flask_login.UserMixin):
     def set_username(self, username):
         self.username = username
         self.userid = self.__hash(username.encode('utf-8'), self.salt.encode('utf-8'))
+
     def set_password(self, password, do_hash=True):
         self.password = password if not do_hash else self.__hash(password.encode('utf-8'), self.salt.encode('utf-8'))
+
     def validate_password(self, password):
         return (self.password == self.__hash(password.encode('utf-8'), self.salt.encode('utf-8')))
+    
+    def get_roles(self, exclude = -1):
+        return { ur.id : ur.name for ur in self.roles if ur != exclude }
+
+    def set_roles(self):
+        pass
+
+    def is_admin(self):
+        return bool(self.get_roles())
+
+    def is_superuser(self):
+        return 1 in self.get_roles().keys()
     ##
     # Override UserMixin
     ##
     def get_id(self):
         return self.userid
+    
+    @staticmethod
+    def check_duplicate(needle):
+        _result = appDB.session.query(User).filter(func.lower(User.username) == func.lower(needle)).first()
+        if _result: return True
+        else: return False
     ##
     # Private methods
     ##
@@ -99,20 +132,52 @@ class User(appDatabase.Model, flask_login.UserMixin):
     def __hash(string, salt):
         return hashlib.sha512(string + salt).hexdigest()
 
-class DBGuest(appDatabase.Model):
+class Roles(appDB.Model):
+    '''
+    Define the Role data-model
+    '''
+    __tablename__ = 'roles'
+    id = appDB.Column(appDB.Integer(), primary_key=True)
+    name = appDB.Column(appDB.String(50), unique=True)
+
+    @staticmethod
+    def get_roles():
+        return appDB.session.query(Roles).order_by(Roles.id).all()
+
+    @staticmethod
+    def get_roles_pairs(exclude = -1):
+        return [(r.id, r.name) for r in Roles.get_roles() if r.id != exclude]
+
+    @staticmethod
+    def get_roles_by_ids(ids):
+        if ids:
+            roles = appDB.session.query(Roles).filter(Roles.id.in_(ids)).order_by(Roles.id).all()
+            if roles: return roles
+        return []
+
+class UserRoles(appDB.Model):
+    '''
+    Define the UserRoles association table
+    '''
+    __tablename__ = 'user_roles'
+    id = appDB.Column(appDB.Integer(), primary_key=True)
+    user_id = appDB.Column(appDB.Integer(), appDB.ForeignKey('user.id', ondelete='CASCADE'))
+    role_id = appDB.Column(appDB.Integer(), appDB.ForeignKey('roles.id', ondelete='CASCADE'))
+
+class DBGuest(appDB.Model):
     '''
     guest database
     '''
     __tablename__ = 'tbl_guests'
     __usage__ = 'DBGuest'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    created = appDatabase.Column(appDatabase.DateTime, default=datetime.now)#, onupdate=datetime.now)
-    fname = appDatabase.Column(appDatabase.LargeBinary)
-    sname = appDatabase.Column(appDatabase.LargeBinary)
-    contact = appDatabase.Column(appDatabase.LargeBinary)
-    guid = appDatabase.Column(appDatabase.VARCHAR(255))
-    agreed = appDatabase.Column(appDatabase.Boolean())
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    created = appDB.Column(appDB.DateTime, default=datetime.now)#, onupdate=datetime.now)
+    fname = appDB.Column(appDB.LargeBinary)
+    sname = appDB.Column(appDB.LargeBinary)
+    contact = appDB.Column(appDB.LargeBinary)
+    guid = appDB.Column(appDB.VARCHAR(255))
+    agreed = appDB.Column(appDB.Boolean())
     ##
     # Public methods
     ##
@@ -141,18 +206,18 @@ class DBGuest(appDatabase.Model):
     def entitytype(self):
         return __name__
 
-class DBCheckin(appDatabase.Model):
+class DBCheckin(appDB.Model):
     '''
     checkin/out datatable
     '''
     __tablename__ = 'tbl_checkins'
     __usage__ = 'DBCheckins'
     # Columns
-    id = appDatabase.Column(appDatabase.Integer, primary_key=True)
-    guid = appDatabase.Column(appDatabase.VARCHAR(255))
-    checkin = appDatabase.Column(appDatabase.DateTime, default=datetime.now)
-    checkout = appDatabase.Column(appDatabase.DateTime, default=None )
-    devision = appDatabase.Column(appDatabase.Integer, default=0)
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    guid = appDB.Column(appDB.VARCHAR(255))
+    checkin = appDB.Column(appDB.DateTime, default=datetime.now)
+    checkout = appDB.Column(appDB.DateTime, default=None )
+    devision = appDB.Column(appDB.Integer, default=0)
     ##
     # Public methods
     ##
@@ -178,6 +243,101 @@ class DBCheckin(appDatabase.Model):
     
     def entitytype(self):
         return __name__
+
+class DBDeleteProtocol(appDB.Model):
+    '''
+    checkin/out datatable
+    '''
+    __tablename__ = 'tbl_deletions'
+    __usage__ = 'DBDeleteProtocol'
+    # Columns
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    guid = appDB.Column(appDB.VARCHAR(255))
+    deleted = appDB.Column(appDB.DateTime, default=datetime.now)
+
+    def __init__(self, guid):
+        self.guid = guid
+        self.deleted = datetime.now()
+
+class DBOrganisations(appDB.Model):
+    '''
+    Organisations databse
+    '''
+    __tablename__ = 'tbl_organisations'
+    __usage__ = 'Organisations'
+    # Columns
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    name = appDB.Column(appDB.VARCHAR(255), unique=True)
+
+    locations = appDB.relationship('DBLocations')
+    ##
+    # Public methods
+    ##
+    def __init__(self, name, oid = None):
+        try:
+            self.id = oid #Primary Key
+            self.name = name
+
+        except Exception as e:
+            print(e)
+
+        
+    def __repr__(self):
+        return f'<Organisation {self.id}>'
+    
+    def json_serialize(self,*args):
+        for a in args:
+            sdict = self.__dict__
+            if a in sdict:
+                del sdict[a]
+        return sdict
+    
+    def entitytype(self):
+        return __name__
+
+    @staticmethod
+    def check_duplicate(needle):
+        _result = appDB.session.query(DBOrganisations).filter(func.lower(DBOrganisations.name) == func.lower(needle)).first()
+        if _result: return True
+        else: return False
+
+class DBLocations(appDB.Model):
+    '''
+    Locations databse
+    '''
+    __tablename__ = 'tbl_locations'
+    __usage__ = 'Locations'
+    # Columns
+    id = appDB.Column(appDB.Integer, primary_key=True)
+    name = appDB.Column(appDB.VARCHAR(255))
+    organisation = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_organisations.id', ondelete='CASCADE'))
+    checkouts = appDB.Column(appDB.VARCHAR(255))
+    ##
+    # Public methods
+    ##
+    def __init__(self, name, organisation=0, checkouts=None, lid = None):
+        try:
+            self.id = lid #Primary Key
+            self.name = name
+            self.organisation = organisation
+            self.checkouts = checkouts
+
+        except Exception as e:
+            print(e)
+
+    def __repr__(self):
+        return f'<Location {self.id}>'
+    
+    def json_serialize(self,*args):
+        for a in args:
+            sdict = self.__dict__
+            if a in sdict:
+                del sdict[a]
+        return sdict
+    
+    def entitytype(self):
+        return __name__
+
 ##
 # Database initialization
 ##
@@ -199,21 +359,40 @@ def init_database():
     initialize database and primary user
     '''
     try:
-        appDatabase.drop_all()
-        appDatabase.create_all()
-    
+        appDB.drop_all()
+        appDB.create_all()
+
         # add meta
         meta = ILSCMeta()
-        appDatabase.session.add(meta)
-        appDatabase.session.commit()
+        appDB.session.add(meta)
+        appDB.session.commit()
 
-        dauser = User(username='admin',
+        super_role = Roles(name='SuperUser')
+        visit_role = Roles(name='VisitorAdmin')
+        admin_role = Roles(name='UserAdmin')
+        location_role = Roles(name='LocationAdmin')
+        appDB.session.commit()
+
+        firstuser = User(username='admin',
                         password='admin',
                         devision = 0,
-                        isadmin = True,
                         do_hash=True)
-        appDatabase.session.add(dauser)
-        appDatabase.session.commit()
+
+        firstuser.roles = [super_role, visit_role, admin_role, location_role]
+
+        appDB.session.add(firstuser)
+        appDB.session.commit()
+
+        organisation = DBOrganisations(oid = 0,
+                            name='Mainorganisation')
+        appDB.session.add(organisation)
+        appDB.session.commit()
+
+        location = DBLocations(lid = 0,
+                            name='Mainlocation',
+                            organisation = 0, checkouts=0)
+        appDB.session.add(location)
+        appDB.session.commit()
 
     except Exception as e:
         print(e)

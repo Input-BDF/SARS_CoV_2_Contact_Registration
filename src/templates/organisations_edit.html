@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 
 {% block body %}
-<form id="userform" method="POST" action="{{ action }}">
+<form id="orgform" method="POST" action="{{ action }}">
 	{% if msg: %}
 	<div id="warning">{{ msg|safe }}</div>
 	{% endif %}
@@ -9,18 +9,13 @@
 	{% for field in form if field.widget.input_type != 'hidden' %}
 		{{ field.label }}
 		{{ field }}
-		{% if field.description != '' %}
-			<div class="tooltip">i
-			  <div class="tooltiptext">{{ field.description }}</div>
-			</div>
-		{% endif%}
 		{% for error in field.errors %}
 			<ul><li style="color:red;">{{ error|safe }}</li></ul>
 		{% endfor %}
 	{% endfor %}
 	<div id="actions">
 		<input id="submit" type="submit" value="Speichern">
-		<a href="{{ url_for('r_users') }}"><button type="button" formnovalidate>Abbrechen</button></a>
+		<a href="{{ url_for('r_organisations') }}"><button type="button" formnovalidate>Abbrechen</button></a>
 	</div>
 </form>
 {% endblock %}
