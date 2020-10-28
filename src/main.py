@@ -724,7 +724,7 @@ scheduler.add_job(appBackend.cleanup_everything, 'cron', id=f"leon_der_profi", h
 scheduler.start()
 
 if appConfig.app['cleanonstart']:
-    #TODO: cal this everytime at some reasonable time
+    appBackend.checkout_all()
     appBackend.cleanup_everything()
 
 #appBackend.inject_random_userdata()#just for testing

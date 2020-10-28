@@ -6,6 +6,7 @@ contactmail = <enteryourmailhere>
 keepdays = 28
 imprint = default_imprint.html
 gprd = default_gprd.html
+#cheackout everythin on start and remove obsolete data
 cleanonstart = False
 #Cron running to check obsolete data
 cleancron = 6
