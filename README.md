@@ -26,7 +26,7 @@ To run this application server side Python >= 3.7 is needed. All required module
 Actually every device with an browser. For scanning every mobile device with a camera or pc with a webcam
 
 ## Limitations
-Scanning is not available for ios devices as the used library can not access camera on these devices.
+Scanning is not available for some ios devices as the used library can not access camera on these devices. Leave a comment if it's working on your device. Unfortunately, there is a lack of test capacities here.
 
 ## Installation
 1. clone repository to your server
@@ -40,7 +40,7 @@ Scanning is not available for ios devices as the used library can not access cam
    1. default user: `admin`
    1. default password: `admin`
 1. open backend via "backend" top right
-1. change username and password and add (optional) users
+1. change username and password and add (optional) users, locations or organisations.
 
 ## I used the last release? What now?
 
