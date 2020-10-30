@@ -23,7 +23,7 @@ To run this application server side Python >= 3.7 is needed. All required module
 1. scan visitor qr code via web interface at the end of the visit (via "checkout" button)
 
 ## Supported devices
-Actually every device with an browser. For scanning every mobile device with a camera or pc with a webcam
+Actually every device with a browser. For scanning every mobile device with a camera or pc with a webcam and an up-to-date browser.
 
 ## Limitations
 Scanning is not available for ios devices as the used library can not access camera on these devices.
