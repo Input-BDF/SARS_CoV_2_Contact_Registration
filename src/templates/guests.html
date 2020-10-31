@@ -1,10 +1,5 @@
 {% extends "main.html" %}
 {% block body %}
-{% if msg: %}
-	{% for t,m in msg.items() %}
-		<div id="info" class="{{ t }}">{{ m|safe }}</div>
-	{% endfor %}
-{% endif %}
 <form action="#" method="post">
 	{{ form.csrf_token }}
 	{{ form.visitdate(class='datepicker') }}

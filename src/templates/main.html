@@ -46,6 +46,13 @@
 					</div>
 				{% endif %}
 				<div id="content">
+					{% with messages = get_flashed_messages(with_categories=true) %}
+						{% if messages %}
+							{% for category, message in messages %}
+								<div id="info" class="{{ category }}">{{ message|safe }}</div>
+							{% endfor %}
+						{% endif %}
+					{% endwith %}
 					{% block body %}{% endblock %}
 				</div>
 				<div id="footer">

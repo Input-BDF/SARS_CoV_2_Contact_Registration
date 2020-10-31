@@ -609,7 +609,7 @@ class Backend(object):
             else:
                 form.role_list = [k for k in self.get_all_user_roles().keys()]
             self.add_user(form)
-            return True, ''
+            return True, f'Organisation "{form.name.data}" hinzugef&uuml;gt'
         except Exception as e:
             self.logger.debug(e)
             return False, 'Es ist ein schwerwiegender Fehler aufgetreten (x00007).'
@@ -883,41 +883,49 @@ class Backend(object):
     def upgrade(self):
         #TODO: Keep this here only as long as needed (alpha>beta!>ceta)
         try:
-            super_role = Roles(name='SuperUser')
-            visit_role = Roles(name='VisitorAdmin')
-            admin_role = Roles(name='UserAdmin')
-            location_role = Roles(name='LocationAdmin')
-            self.appDB.session.commit()
-
-            firstuser = self.get_current_user()
-            if firstuser:
-                firstuser.roles = [super_role, visit_role, admin_role, location_role]
+            roles = self.appDB.session.query(Roles).first()
+            if not roles:
+                super_role = Roles(name='SuperUser')
+                visit_role = Roles(name='VisitorAdmin')
+                admin_role = Roles(name='UserAdmin')
+                location_role = Roles(name='LocationAdmin')
                 self.appDB.session.commit()
-    
-                self.appDB.session.add(firstuser)
-                self.appDB.session.commit()
-            else:
-                raise Exception("Sorry, there is no user available. Can not perfom db upgrade")
-
-            organisation = DBOrganisations(oid = 0,
-                                name='Mainorganisation')
-            self.appDB.session.add(organisation)
-            self.appDB.session.commit()
-            
-            result = self.appDB.session.query(User.devision).distinct(User.devision).all()
-            if result:
-                for r in list(result):
-                    location = DBLocations(lid = r[0],
-                                        name=f'Location_{r[0]}',
-                                        organisation = 0)
-                    self.appDB.session.add(location)
+                flask.flash('Added roles', 'success')
+                firstuser = self.get_current_user()
+                if firstuser:
+                    firstuser.roles = [super_role, visit_role, admin_role, location_role]
                     self.appDB.session.commit()
+        
+                    self.appDB.session.add(firstuser)
+                    self.appDB.session.commit()
+                    flask.flash('Updated first user', 'success')
+                else:
+                    raise Exception("Sorry, there is no user available. Can not perfom db upgrade")
 
+            #check org-presence
+            org = self.appDB.session.query(DBOrganisations).first()
+            if not org:
+                organisation = DBOrganisations(oid = 0,
+                                    name='Mainorganisation')
+                self.appDB.session.add(organisation)
+                self.appDB.session.commit()
+                flask.flash(f'First organisation "{organisation.name}" added', 'success')
+                result = self.appDB.session.query(User.devision).distinct(User.devision).all()
+                if result:
+                    for r in list(result):
+                        location = DBLocations(lid = r[0],
+                                            name=f'Location_{r[0]}',
+                                            organisation = 0)
+                        self.appDB.session.add(location)
+                        self.appDB.session.commit()
+                        flask.flash(f'Location "{location.name}" added', 'success')
             result = self.appDB.session.query(ILSCMeta).first()
-            if result:
-                result.version = '0.5'
+            version = '0.5'
+            if result and result.version != version:
+                result.version = version
                 result.created = datetime.utcnow()
                 self.appDB.session.commit()
+                flask.flash(f'Updated version to {version}', 'success')
             return True, 'Upgrade successful. Now configure autoleaves, locationnames and user roles if needed.'
         except Exception as e:
             self.logger.debug(e)

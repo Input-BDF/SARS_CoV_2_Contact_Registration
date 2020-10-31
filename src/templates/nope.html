@@ -1,9 +1,4 @@
 {% extends "main.html" %}
 {% block body %}
-{% if msg: %}
-	{% for t,m in msg.items() %}
-		<div id="info" class="{{ t }}">{{ m|safe }}</div>
-	{% endfor %}
-{% endif %}
-<p>Nope. That's not the robot you're searching</p>
+<p>Nope. That's not the robot you're searching.</p>
 {% endblock %}

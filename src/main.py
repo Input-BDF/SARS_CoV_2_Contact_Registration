@@ -10,7 +10,6 @@ import flask_login
 import os
 import sys
 import logging
-import json
 import ilsc
 
 from twisted.internet import reactor, ssl
@@ -159,16 +158,6 @@ def __render(template, **kwargs):
     except Exception as e:
         logging.error(str(e))
 
-def check_messages():
-    '''
-    check if message should be displayed
-    '''
-    if 'messages' in flask.session.keys():
-        msg = flask.session['messages']
-        flask.session.pop('messages')
-        return json.loads(msg)
-    return None
-
 ##
 # Initialization
 ##
@@ -258,15 +247,15 @@ appBackend = ilsc.Backend(appConfig, flaskApp, ilsc.appDB, MAGIC_USER_ID, schedu
 @flaskApp.route('/', methods=['GET', 'POST'])
 def r_regform():
     form = ilsc.forms.RegisterForm()
-    msg = None
     if form.validate_on_submit():
         guid = appBackend.gen_guid()
         success, msg = appBackend.enter_guest(form, guid)
         if success:
             appBackend.make_qr(guid, scale=20)
             return flask.redirect(flask.url_for('r_getqr', guid=guid, n=1),code=302)
-            
-    return __render('mainform.html', form = form, msg = msg)
+        else:
+            flask.flash(msg, 'error')
+    return __render('mainform.html', form = form)
 
 @flaskApp.route('/qr/<guid>')
 def r_getqr(guid):
@@ -322,7 +311,6 @@ def r_signin():
                 next_url = flask.session.get('next_url', '/')
                 if 'next_url' in flask.session.keys():
                     flask.session.pop('next_url')
-                #return flask.redirect(flask.url_for('r_scanning'),code=302)
                 return flask.redirect(next_url,code=302)
             else:
                 errors.append(f'Fehler: Nutzer "{username}" inaktiv.')
@@ -351,8 +339,7 @@ def r_users():
         _users, _lcodict = appBackend.get_organisation_users(int(flask.session['o']))
     else:
         _users, _lcodict = appBackend.get_organisation_users(_user.location.organisation)
-    msg = check_messages()
-    return __render('users.html', users=_users, msg=msg, loc=_lcodict)
+    return __render('users.html', users=_users, loc=_lcodict)
 
 @flaskApp.route('/user/add', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -376,10 +363,7 @@ def r_user_add():
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
         success, msg = appBackend.add_user(form)
-        if success:
-            flask.session['messages'] = json.dumps({"success": msg})
-        else:
-            flask.session['messages'] = json.dumps({"error": msg})
+        flask.flash(msg, 'success' if success else 'error')
         return flask.redirect(flask.url_for('r_users'),code=302)
     else:
         return __render('user_edit.html',
@@ -413,10 +397,7 @@ def r_user_edit(uid):
             return flask.redirect(flask.url_for('r_users'),code=302)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_user(_user.id, form)
-            if success:
-                flask.session['messages'] = json.dumps({"success": msg})
-            else:
-                flask.session['messages'] = json.dumps({"error": msg})
+            flask.flash(msg, 'success' if success else 'error')
             return flask.redirect(flask.url_for('r_users'),code=302)
         form.roles.data = [int(k) for k in _user.get_roles().keys() ]
 
@@ -446,10 +427,7 @@ def r_user_passwd(uid):
         form = ilsc.forms.ChangePasswd(obj = _user)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_password(_user.id, form)
-            if success:
-                flask.session['messages'] = json.dumps({"success": msg})
-            else:
-                flask.session['messages'] = json.dumps({"error": msg})
+            flask.flash(msg, 'success' if success else 'error')
             return flask.redirect(flask.url_for('r_users'),code=302)
         return __render('user_edit.html',
                         form = form,
@@ -489,8 +467,7 @@ def r_organisations():
     render organisation overview page
     '''
     organisations = ilsc.DBOrganisations.query.all()
-    msg = check_messages()
-    return __render('organisations.html', organisations=organisations, msg=msg)
+    return __render('organisations.html', organisations=organisations)
 
 @flaskApp.route('/organisation/add', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -503,7 +480,8 @@ def r_organisation_add():
                                           usr_dup_check = ilsc.User.check_duplicate)
     if 'POST' == flask.request.method and form.validate_on_submit():
         #TODO: give feedback
-        appBackend.add_organisation(form)
+        success, msg = appBackend.add_organisation(form)
+        flask.flash(msg, 'success' if success else 'error')
         return flask.redirect(flask.url_for('r_organisations'),code=302)
     else:
         return __render('organisations_edit.html', form=form, action=flask.url_for('r_organisation_add'))
@@ -521,10 +499,7 @@ def r_organisation_edit(oid):
         form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate, obj=organisation)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_organisation(organisation.id, form)
-            if success:
-                flask.session['messages'] = json.dumps({"success": msg})
-            else:
-                flask.session['messages'] = json.dumps({"error": msg})
+            flask.flash(msg, 'success' if success else 'error')
             return flask.redirect(flask.url_for('r_organisations'),code=302)
         
         #form = ilsc.forms.OrganisationForm(dup_check = ilsc.DBOrganisations.check_duplicate, obj = organisation)
@@ -542,7 +517,7 @@ def r_organisation_switch():
     form.organisation.choices = list(_orgs)
     if 'POST' == flask.request.method and form.validate_on_submit():
         flask.session['o'] = form.organisation.data
-        flask.session['messages'] = json.dumps({"success": 'Switched Organisation'})
+        flask.flash('Switched Organisation', 'success')
         return flask.redirect(flask.url_for('r_users'),code=302)
     if 'o' in flask.session.keys():
         form.organisation.data = int(flask.session['o'])
@@ -570,9 +545,8 @@ def r_locations():
         _locs, _ = appBackend.get_organisation_locations(int(flask.session['o']))
     else:
         _locs, _ = appBackend.get_organisation_locations(_user.location.organisation)
-    
-    msg = check_messages()
-    return __render('locations.html', locations=_locs, msg=msg)#, org = orgdict)
+
+    return __render('locations.html', locations=_locs)
 
 @flaskApp.route('/location/add', methods=['GET', 'POST'])
 @flask_login.login_required
@@ -591,10 +565,7 @@ def r_location_add():
         success, msg = appBackend.add_location(name=form.name.data,
                                                organisation=_org,
                                                checkouts=form.checkouts.data)
-        if success:
-            flask.session['messages'] = json.dumps({"success": msg})
-        else:
-            flask.session['messages'] = json.dumps({"error": msg})
+        flask.flash(msg, 'success' if success else 'error')
         return flask.redirect(flask.url_for('r_locations'),code=302)
     else:
         return __render('locations_edit.html', form = form, action = flask.url_for('r_location_add'))
@@ -612,10 +583,7 @@ def r_location_edit(lid):
         form = ilsc.forms.LocationForm(obj = _location)
         if 'POST' == flask.request.method and form.validate_on_submit():
             success, msg = appBackend.update_location(_location.id, form)
-            if success:
-                flask.session['messages'] = json.dumps({"success": msg})
-            else:
-                flask.session['messages'] = json.dumps({"error": msg})
+            flask.flash(msg, 'success' if success else 'error')
             return flask.redirect(flask.url_for('r_locations'),code=302)
 
         return __render('locations_edit.html',
@@ -696,12 +664,10 @@ def r_upgrade():
             render organisation add form
             '''
         success, msg = appBackend.upgrade()
-        if success:
-            flask.session['messages'] = json.dumps({"success": msg})
-        else:
-            flask.session['messages'] = json.dumps({"error": msg})
+        flask.flash(msg, 'success' if success else 'error')
         return flask.redirect(flask.url_for('r_locations'),code=302)
     except Exception as e:
+        flask.flash('Something went wrong. Please check logs', 'error')
         logging.warning('Something terribly went wrong. Hope you did an backup!')
 
 @flaskApp.errorhandler(404)
