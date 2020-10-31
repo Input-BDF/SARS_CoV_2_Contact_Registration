@@ -11,9 +11,6 @@
 	<p>Hilf mit, Party smart!</p>
 </div>
 <form id="regform" method="POST" action="{{url_for('r_regform')}}">
-	{% if msg: %}
-	<div id="warning">{{ msg|safe }}</div>
-	{% endif %}
 	{{ form.csrf_token }}
 	{{ form.firstname.label }}
 	{{ form.firstname }}
