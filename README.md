@@ -2,15 +2,15 @@
 A simple web application to collect contact information from visitors during the SARS CoV 2 pandemic.
 
 ## Intention
-Basic intention is to provide an alternative way to collect visitor data during SARS CoV 2 pandemic. Since regulations force us to collect this data and no mobile phone app should be used we started this approach
+The basic intention is to provide an alternative way of collecting visitor data during the SARS CoV 2 pandemic. The regulations force us to collect this data. In order not to suffocate in thousands of paper forms and to collect data as "technology-neutral" as possible, no mobile phone app should be used. So we started this approach. Hope that helps you too.
 
 ## How it works
-Basically a visitor opens the web url, enters his/her data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you safe a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
-Visitor data is stored assymetric (why? because i can) within database and only users with admin permission can read this data. Visits and visitor data older than the given threshold will be deleted automatically.
+Basically a visitor opens the web url, enters their data and retrives a qr code containing an unique id. On site this qr code is scanned by an employee on begin and end of the visitor visit. This way personal data is only tranfered once and you save a lot of paper. Also an checkin/ checkout is independent of a mobile device since the visitor can also print this qr code.
+Visitor data is stored asymetric (why? because i can) within database and only users with appropriate admin role can read this data. Visits and visitor data older than the given threshold will be deleted automatically.
 
 ## Requirements
 All you need on the visitor's side is an internet connection and a browser.
-To run this application server side Python >= 3.7 is needed. All required modules are listet within requirements.txt. For SSL connection valid certificates are needed. <a href="https://letsencrypt.org/de/">Let's encrypt</a> is your friend. If you have a guest wlan you could run all this e.g. on a Raspberry Pi accessible over your network.
+To run this application server side Python >= 3.7 is needed. All required modules are listet within requirements.txt. For SSL connection valid certificates are needed. <a href="https://letsencrypt.org/">Let's encrypt</a> is your friend. If you have a guest wifi you could run all this e.g. on a Raspberry Pi accessible over your network.
 
 ## Usage visitor
 1. Open Url
@@ -23,7 +23,7 @@ To run this application server side Python >= 3.7 is needed. All required module
 1. scan visitor qr code via web interface at the end of the visit (via "checkout" button)
 
 ## Supported devices
-Actually every device with an browser. For scanning every mobile device with a camera or pc with a webcam
+Actually every device with a browser. For scanning every mobile device with a camera or pc with a webcam and an up-to-date browser.
 
 ## Limitations
 Scanning is not available for some ios devices as the used library can not access camera on these devices. Leave a comment if it's working on your device. Unfortunately, there is a lack of test capacities here.
@@ -44,7 +44,7 @@ Scanning is not available for some ios devices as the used library can not acces
 
 ## I used the last release? What now?
 
-Do a backup and check upgrad.md. Things can go wrong. If you have any trouble -> contact me!
+Do a backup and check [UPGRADE.md](UPGRADE.md). Things can go wrong. If you have any trouble -> contact me!
 
 ## Used third party modules  
 https://github.com/schmich/instascan thx a lot, nice work done dude
