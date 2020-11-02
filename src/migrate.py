@@ -126,6 +126,7 @@ class DBLocations(appDB.Model):
     name = appDB.Column(appDB.VARCHAR(255))
     organisation = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_organisations.id', ondelete='CASCADE'))
     checkouts = appDB.Column(appDB.VARCHAR(255))
+    autoscancheckout = appDB.Column(appDB.Boolean)
 
 if __name__ == '__main__':
     try:

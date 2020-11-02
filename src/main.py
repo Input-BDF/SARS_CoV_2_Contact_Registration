@@ -564,7 +564,8 @@ def r_location_add():
             _org = appBackend.get_current_user().location.organisation
         success, msg = appBackend.add_location(name=form.name.data,
                                                organisation=_org,
-                                               checkouts=form.checkouts.data)
+                                               checkouts=form.checkouts.data,
+                                               asco = form.autoscancheckout.data)
         flask.flash(msg, 'success' if success else 'error')
         return flask.redirect(flask.url_for('r_locations'),code=302)
     else:

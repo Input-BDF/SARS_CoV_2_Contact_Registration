@@ -134,7 +134,7 @@ class Backend(object):
         '''
         try:
             _data = json.loads(data.decode('utf-8'))
-            #self.logger.debug(_data)
+            self.logger.debug(_data)
             if 'exists' in _data.keys():
                 cleaned_guid = clean_strings(_data['exists'])
                 _known = self.check_guid_today(cleaned_guid, _data['devision'])
@@ -677,13 +677,13 @@ class Backend(object):
                 self.logger.debug(e)
                 return []
 
-    def add_location(self, name, organisation, checkouts):
+    def add_location(self, name, organisation, checkouts, asco = False):
         '''
         add user to database
         '''
         try:
             with self.flaskApp.app_context():
-                new_loc = DBLocations(name, organisation=int(organisation), checkouts=checkouts)
+                new_loc = DBLocations(name, organisation=int(organisation), checkouts=checkouts, asco = asco)
                 self.appDB.session.add(new_loc)
                 self.appDB.session.commit()
                 self.update_scheduler(new_loc)
@@ -702,6 +702,7 @@ class Backend(object):
                 #location.name = form.name.data
                 _location.name = clean_strings(form.name.data).decode('utf-8')
                 _location.checkouts = form.checkouts.data
+                _location.autoscancheckout = form.autoscancheckout.data
 
                 if self.appDB.session.is_modified(_location):
                     self.appDB.session.commit()

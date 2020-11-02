@@ -184,12 +184,14 @@ class LocationForm(FlaskForm):
                                        """Mehrere Werte durch Komma trennen. z.B.: 0,12,23""" }
                             )
 
+    autoscancheckout = BooleanField(label = 'Autocheckout beim Scannen')
+
     def __init__(self, obj = None, *arg, **kwargs):
         super().__init__(obj = obj, *arg, **kwargs)
 
 class OrganisationForm(FlaskForm):
     '''
-    ogranisation edit form
+    organisation edit form
     '''
     name = StringField(label = 'Organisation',
                             validators=[InputRequired(message='Bitte Namen eingeben'), length(max=256, message='Maximal 256 Zeichen erlaubt.'), validate_unique],

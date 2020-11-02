@@ -312,15 +312,17 @@ class DBLocations(appDB.Model):
     name = appDB.Column(appDB.VARCHAR(255))
     organisation = appDB.Column(appDB.Integer(), appDB.ForeignKey('tbl_organisations.id', ondelete='CASCADE'))
     checkouts = appDB.Column(appDB.VARCHAR(255))
+    autoscancheckout = appDB.Column(appDB.Boolean, default=False)
     ##
     # Public methods
     ##
-    def __init__(self, name, organisation=0, checkouts=None, lid = None):
+    def __init__(self, name, organisation=0, checkouts=None, lid=None, asco=False):
         try:
             self.id = lid #Primary Key
             self.name = name
             self.organisation = organisation
             self.checkouts = checkouts
+            self.autoscancheckout = asco
 
         except Exception as e:
             print(e)

@@ -6,7 +6,6 @@ Created on 06.06.2020
 '''
 
 __all__ = ['WebsocketMultiServer']
-
 from autobahn.twisted.websocket import WebSocketServerFactory, \
     WebSocketServerProtocol
 
