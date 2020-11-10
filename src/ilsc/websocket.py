@@ -7,16 +7,24 @@ Created on 06.06.2020
 
 __all__ = ['WebsocketMultiServer']
 from autobahn.twisted.websocket import WebSocketServerFactory, \
-    WebSocketServerProtocol
+    WebSocketServerProtocol, ConnectionDeny
 
 class WSServerProtocol(WebSocketServerProtocol):
     def onConnect(self, request):
-        self.factory.connection_made()
-        self.factory.register(self)
+        try:
+            cookie = request.headers['cookie']
+            auth = self.factory.connection_made(cookie)
+            if auth:
+                self.factory.register_client(self)
+            else:
+                #TODO: maybe implement this somehow with raise ConnectionDeny
+                self.failHandshake(403, 'Wrong server dude')
+        except Exception as e:
+            self.failHandshake(500, 'Something went wrong')
 
     def connectionLost(self, reason):
         self.factory.connection_lost(reason)
-        self.factory.unregister(self)
+        self.factory.unregister_client(self)
 
     def onMessage(self, payload, isBinary):
         response, isBinary = self.factory.callback(payload, isBinary)
@@ -38,10 +46,10 @@ class WebsocketMultiServer(WebSocketServerFactory):
         self.connection_made = bck_end_connection_made
         self.connection_lost = bck_end_connection_lost
 
-    def register(self, client):
+    def register_client(self, client):
         self.clients[client.peer] = {"object": client}
 
-    def unregister(self, client):
+    def unregister_client(self, client):
         try:
             self.clients.pop(client.peer)
         except KeyError:

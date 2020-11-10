@@ -4,34 +4,32 @@ Created on 06.06.2020
 
 @author: Input
 '''
-#from sys import settrace
 
 __all__ = ['Backend']
 
+import flask
+import json
 import logging
 import os
-import json
 import pyqrcode
 import uuid
-import flask
+import zlib
+from base64 import b64decode, b64encode
+from datetime import datetime, timedelta
+from werkzeug.http import parse_date
+from flask import Markup
 from flask_login import current_user
-from twisted.web.server import Site
+from itsdangerous import base64_decode
 from autobahn.twisted.resource import WebSocketResource, Resource
+from .websocket import *
+from twisted.web.server import Site
 from sqlalchemy import and_, between
 from sqlalchemy import exc
-from datetime import datetime, timedelta
-from .websocket import *
 
 from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, ILSCMeta, DBDeleteProtocol
 from ilsc import caesar
 
 from bs4 import BeautifulSoup
-##
-# Debug pydevd
-##
-
-#try: import pydevd;pydevd.settrace('127.0.0.1',stdoutToServer=True, stderrToServer=True) #@UnresolvedImport
-#except ImportError: None # avoids throwing an Exception when not in debug mode
 
 def clean_strings(string):
     '''
@@ -53,6 +51,28 @@ def clean_strings(string):
         return text
     except Exception as e:
         print('Clean_Strings', e)
+
+def flask_loads(value):
+    #TODO: maybe i don't relly need this
+    """Flask uses a custom JSON serializer so they can encode other data types.
+    This code is based on theirs, but we cast everything to strings because we
+    don't need them to survive a roundtrip if we're just decoding them."""
+    def object_hook(obj):
+        if len(obj) != 1:
+            return obj
+        the_key, the_value = next(obj.iteritems())
+        if the_key == ' t':
+            return str(tuple(the_value))
+        elif the_key == ' u':
+            return str(uuid.UUID(the_value))
+        elif the_key == ' b':
+            return str(b64decode(the_value))
+        elif the_key == ' m':
+            return str(Markup(the_value))
+        elif the_key == ' d':
+            return str(parse_date(the_value))
+        return obj
+    return json.loads(value, object_hook=object_hook)
 
 class visit():
     '''
@@ -92,6 +112,7 @@ class Backend(object):
         self.superuser = superuser
         self.init_websocket()
         self.scheduler = scheduler
+        self.ws_token = b64encode(os.urandom(24)).decode('utf-8')
 
     def init_websocket(self):
         '''
@@ -167,19 +188,24 @@ class Backend(object):
         '''
         self.websocket.send(json.dumps(data))
         pass
-    
-    def _ws_connection_made(self):
+
+    def _ws_connection_made(self, cookie):
         '''
         Websocket connection made callback
         '''
-        self._broadcast(json.dumps({'CLIENTS' : str(len(self.websocket.clients))}))
-        pass
+        try:
+            cookie_cnt = json.loads(self.decodeFlaskCookie(cookie))
+            if cookie_cnt and 'wst' in cookie_cnt.keys() and cookie_cnt['wst'] == self.ws_token:
+                return True
+        except Exception as e:
+            self.logger.warning(f'Invalid ws connection request: {e}')
+        return False
 
     def _ws_connection_lost(self, reason):
         '''
         Websocket connection lost callback
         '''
-        self._broadcast(json.dumps({'CLIENTS' : str(len(self.websocket.clients))}))
+        #self._broadcast(json.dumps({'CLIENTS' : str(len(self.websocket.clients))}))
         pass
 
     def _broadcast(self, payload):
@@ -1061,7 +1087,30 @@ class Backend(object):
         self.appDB.session.add(delete)
         #self.appDB.session.commit() 
 
+    def decodeFlaskCookie(self, cookie):
+        """Decode a Flask cookie."""
+        try:
+            compressed = False
+            payload = cookie.replace('session=','')
+    
+            if payload.startswith('.'):
+                compressed = True
+                payload = payload[1:]
+    
+            data = payload.split(".")[0]
+    
+            data = base64_decode(data)
+            if compressed:
+                data = zlib.decompress(data)
+    
+            return data.decode("utf-8")
+        except Exception as e:
+            self.logger.debug(f"[Decoding error: are you sure this was a Flask session cookie? {e}]")
+            return None
+
+#
 #Testfunctions
+#
     def inject_random_userdata(self):
         for _ in range(0,100):
             self.test_enter_guest()
