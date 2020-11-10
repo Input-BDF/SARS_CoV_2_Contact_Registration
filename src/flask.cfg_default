@@ -2,6 +2,7 @@
 SQLALCHEMY_DATABASE_URI = 'sqlite:///ilsc.db'
 SQLALCHEMY_RECORD_QUERIES = False
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+SESSION_COOKIE_HTTPONLY=True
 #secret key that will be used for securely signing the session cookie and can be used for any other security related needs by extensions or your application
 SECRET_KEY = 'insertyoursecretkeyhere'
 DEBUG = True

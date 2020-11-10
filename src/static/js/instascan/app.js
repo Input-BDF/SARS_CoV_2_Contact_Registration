@@ -152,6 +152,7 @@
 						  
 						  // Only applies to continuous mode. The period, in milliseconds, before the same QR code
 						  // will be recognized in succession. Default 5000 (5 seconds).
+						  //refractoryPeriod: 10000,
 						  refractoryPeriod: 5000,
 						  
 						  // Only applies to continuous mode. The period, in rendered frames, between scans. A lower scan period
