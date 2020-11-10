@@ -4,6 +4,7 @@ Created on 06.06.2020
 
 @author: Input
 '''
+from sqlalchemy.engine import strategies
 
 __all__ = ['Backend']
 
@@ -23,7 +24,7 @@ from itsdangerous import base64_decode
 from autobahn.twisted.resource import WebSocketResource, Resource
 from .websocket import *
 from twisted.web.server import Site
-from sqlalchemy import and_, between
+from sqlalchemy import and_, or_, between
 from sqlalchemy import exc
 
 from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, ILSCMeta, DBDeleteProtocol
@@ -158,7 +159,7 @@ class Backend(object):
             self.logger.debug(_data)
             if 'exists' in _data.keys():
                 cleaned_guid = clean_strings(_data['exists'])
-                _known = self.check_guid_today(cleaned_guid, _data['devision'])
+                _known = self.check_guid_is_checkedin(cleaned_guid, _data['devision'])
                 return json.dumps({'exists': self.check_guid(cleaned_guid), 'known':_known}), isBinary
             if 'checkin' in _data.keys():
                 cleaned_guid = clean_strings(_data['checkin'])
@@ -245,20 +246,22 @@ class Backend(object):
 
     def check_guid(self, guid):
         '''
-        Query Database if guid exists
+        Query Database if guid exists in guest table
         '''
         with self.flaskApp.app_context():
             try:
                 c_str = clean_strings(guid)
                 _guest = self.appDB.session.query(DBGuest).filter_by(guid=c_str).all()
                 if not _guest:
+                    #guest is totally unknown
                     return False
                 else:
+                    #hey i know you
                     return True
             except Exception as e:
                 self.logger.debug(e)
 
-    def check_guid_today(self, guid, devision):
+    def check_guid_is_checkedin(self, guid, devision):
         '''
         Query Database if guid exists in checkin
         '''
@@ -266,18 +269,53 @@ class Backend(object):
             try:
                 c_str = clean_strings(guid)
                 lookup = and_(DBCheckin.guid==c_str,
-                              DBCheckin.checkin+timedelta(days=1) < datetime.now(),
                               DBCheckin.checkout == None,
                               DBCheckin.devision == devision)
                 _query = self.appDB.session.query(DBCheckin).filter(lookup).order_by(DBCheckin.checkin.desc())
                 _guest = _query.first()
+                _lastaction = self.check_cooldown(guid, devision)
                 if _guest:
+                    #guest is checked in
                     return True
                 else:
+                    #guest not checked in
                     return False
             except Exception as e:
                 self.logger.debug(e)
-                print(e)
+
+    def check_cooldown(self, guid, devision):
+        '''
+        Query Database if guid was useded i cooldown time
+        '''
+        with self.flaskApp.app_context():
+            try:
+                c_str = clean_strings(guid)
+                #TODO: define cooldown in config
+                _delta = (datetime.now() - timedelta(minutes=3)).strftime("%Y-%m-%d %H:%M:%S.%f")
+
+                lookup_notchecked_out = and_(DBCheckin.guid==c_str,
+                              DBCheckin.checkin < _delta,
+                              DBCheckin.checkout == None,
+                              DBCheckin.devision == devision)
+                lookup_checked_out = and_(DBCheckin.guid==c_str,
+                              DBCheckin.checkin < _delta,
+                              DBCheckin.checkout < _delta,
+                              DBCheckin.devision == devision)
+                '''
+                lookup = and_(DBCheckin.guid==c_str,
+                              DBCheckin.checkout != 0,
+                              DBCheckin.devision == devision)
+                '''
+                _query = self.appDB.session.query(DBCheckin).filter(or_(lookup_notchecked_out, lookup_checked_out)).order_by(DBCheckin.checkout.desc())
+                _guest = _query.first()
+                if _guest:
+                    #guest is checked in/out within cooldown
+                    return True
+                else:
+                    #guest is not checked in/out within cooldown
+                    return False
+            except Exception as e:
+                self.logger.debug(e)
 
     def enter_guest(self, form, guid):
         '''
@@ -311,7 +349,7 @@ class Backend(object):
         '''
         try:
             guid = clean_strings(guid)
-            if (not self.check_guid_today(guid, devision)) and (self.check_guid(guid)):
+            if (not self.check_guid_is_checkedin(guid, devision)) and (self.check_guid(guid)):
                     with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid, devision = devision)
                         self.appDB.session.add(new_guest)
@@ -1144,7 +1182,7 @@ class Backend(object):
         '''
         try:
             guid = clean_strings(guid)
-            if (not self.check_guid_today(guid, 0)) and (not self.check_guid(guid)):
+            if (not self.check_guid_is_checkedin(guid, 0)) and (not self.check_guid(guid)):
                     with self.flaskApp.app_context():
                         new_guest = DBCheckin(guid = guid)
                         self.appDB.session.add(new_guest)
