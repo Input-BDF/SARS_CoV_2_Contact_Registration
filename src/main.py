@@ -289,6 +289,8 @@ def r_scanning():
                   3 : flask.url_for('r_users'),
                   4 : flask.url_for('r_locations')
                   }
+        #add websocket auth token to session cookie
+        flask.session['wst'] = appBackend.ws_token
         return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = _loc_id, location = _loc_name, target=target)
     except Exception as e:
         print(e)
