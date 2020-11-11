@@ -47,6 +47,8 @@ class Config(object):
         self.app['cleancron'] = 6
         self.app['timezone'] = 'Europe/Berlin'
         self.app['cooldown'] = 10.0
+        self.app['webrtc-adapter'] = '3.3.3'
+        self.app['vue'] = '2.1.10'
         # Section [http]
         self.http = {}
         self.http['address'] = ''

@@ -4,9 +4,9 @@
 		<meta http-equiv="Content-Type" content="text/html" charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="shortcut icon" href="{{ url_for('static', filename='images/racoon_32x32.png') }}" type="image/png">
-		<link rel="stylesheet" href="{{ url_for('static', filename='js/instascan/style.css') }}">
-		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/3.3.3/adapter.min.js"></script>
-		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.1.10/vue.min.js"></script>
+		<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/{{ webrtc }}/adapter.min.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vue/{{ vue }}/vue.min.js"></script>
 		<script type="text/javascript" src="{{ url_for('static', filename='js/instascan/instascan_v2.min.js') }}"></script>
 	</head>
 	<body>
@@ -16,19 +16,19 @@
 			</div>
 			<div class="sidebar">
 				<section class="cameras">
-					<button id="show_cams"></button>
+					
 					<div id="scanheader">
 						<div class="links">
 							<span>{{ location|safe }}: </span><span id="check_count">{{ count }} </span><span class="bio">&#9763;</span>
-							<a href="{{ url_for('r_signout') }}">Logout</a>
 						</div>
 						<div class="row">
-						    <input type="checkbox" id="hamburg">
-						    <label for="hamburg" class="hamburg" id="hamburgicon">
-						        <span class="line"></span>
-						        <span class="line"></span>
-						        <span class="line"></span>
-						    </label>
+							<label for="resizecam" class="resizecam" id="resizecam" title="Fit video to screen"></label>
+							<input type="checkbox" id="hamburg">
+							<label for="hamburg" class="hamburg" id="hamburgicon">
+								<span class="line"></span>
+								<span class="line"></span>
+								<span class="line"></span>
+							</label>
 						</div>
 						<div id="scanmenu">
 							<ul id="scanmenu_list">
@@ -40,18 +40,22 @@
 								</li>
 								<li>
 									<span class="bio">&#9763;</span>
-									<a href="{{ target[roles[0]] }}">Manueller Eintrag</a>
+									<a href="{{ url_for('r_manregform') }}">Manueller Eintrag</a>
 								</li>
 								<li id="cams">
 									<ul id="camlist">
 										<li v-if="cameras.length === 0" class="empty">No cameras found</li>
 										<li v-for="camera in cameras">
+											<span class="bio">&#9763;</span>
 											<span v-if="camera.id == activeCameraId" :title="formatName(camera.name)" class="active">{{'{{'}} formatName(camera.name) {{'}}'}}</span>
 											<span v-if="camera.id != activeCameraId" :title="formatName(camera.name)">
 												<a @click.stop="selectCamera(camera)">{{'{{'}} formatName(camera.name) {{'}}'}}</a>
 											</span>
 										</li>
 									</ul>
+								</li>
+								<li>
+									<span class="bio">&#9763;</span><a href="{{ url_for('r_signout') }}">Logout</a>
 								</li>
 							</ul>
 						</div>

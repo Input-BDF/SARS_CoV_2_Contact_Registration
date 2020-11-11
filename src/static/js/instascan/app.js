@@ -238,9 +238,10 @@
 					)
 				);
 		});
-		$("#show_cams").click( function( e ) {
-			$('.cameras').toggleClass('hide');
-			fitvideo()
+		$("#resizecam").click( function( e ) {
+			/*$('.cameras').toggleClass('hide');*/
+			console.log('resize');
+			fitvideo();
 		});
 		function fitvideo() {
 			var winheight = $(window).height();

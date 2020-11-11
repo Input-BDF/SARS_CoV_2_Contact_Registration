@@ -156,7 +156,7 @@ class Backend(object):
         '''
         try:
             _data = json.loads(data.decode('utf-8'))
-            self.logger.debug(_data)
+            #self.logger.debug(_data)
             if 'exists' in _data.keys():
                 cleaned_guid = clean_strings(_data['exists'])
                 _known = self.check_guid_is_checkedin(cleaned_guid, _data['devision'])
@@ -230,6 +230,16 @@ class Backend(object):
                 self.logger.debug(e)
                 return False
 
+    def broadcast_counter(self, division):
+        '''
+        Tell everybody that about counter stat
+        '''
+        #TODO: Rework so only division clients get the info
+        self._broadcast(json.dumps({
+                                    'COUNTER' : self.count_guests(division),
+                                    'DEVISION' : division
+                                    }))
+
     def gen_guid(self, length=32):
         '''
         generate guid and return guid
@@ -252,10 +262,7 @@ class Backend(object):
             try:
                 devision = int(_data['devision'])
                 success, msg = handlers[_action](cleaned_guid, devision)
-                self._broadcast(json.dumps({
-                                            'COUNTER' : self.count_guests(devision),
-                                            'DEVISION' : devision
-                                            }))
+                self.broadcast_counter(devision)
                 return json.dumps({_action: success, 'msg': msg})
             except Exception as e:
                 print(e)
@@ -404,10 +411,7 @@ class Backend(object):
                     self.guid_queue.add(c_str, _ttl)
                     if devision == None:
                         #Emmit new counter for checkedout division since they will not know if not
-                        self._broadcast(json.dumps({
-                                                    'COUNTER' : self.count_guests(_guest.devision),
-                                                    'DEVISION' : _guest.devision
-                                                    }))
+                        self.broadcast_counter(_guest.devision)
                     return True, 'Checkout erfolgreich'
                 else:
                     return False, 'Da gabs nix für nen Checkout.'

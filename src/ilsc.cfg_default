@@ -12,6 +12,10 @@ cleanonstart = False
 cleancron = 6
 timezone = Europe/Berlin
 cooldown = 10.0
+#webrtc-adapter version loaded from cdnjs (default:  3.3.3)
+webrtc-adapter = 3.3.3
+#vue version loaded from cdnjs (default: 2.1.10)
+vue = 2.1.10
 
 [http]
 usessl = True
@@ -23,7 +27,7 @@ servercacert = ./keys/cacert.pem
 serverpriv = ./keys/privkey.pem
 
 [websocket]
-#domain jused to access websocket; should be the same as for your web app
+#domain used to access websocket; should be the same as for your web app
 address = 127.0.0.1
 port = 8445
 

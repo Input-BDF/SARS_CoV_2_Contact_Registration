@@ -215,12 +215,30 @@ content: "⇓";
 	background-color: #506d7b;
 	height: 39px;
 }
+label.resizecam,
 label.hamburg { 
    display: block;
    background: #555; width: 40px; height: 39px; 
    position: relative; 
    margin-left: 5px; /*margin-right: auto;*/
    border-radius: 4px; 
+}
+
+/*label.resizecam:focus,*/
+label.resizecam:hover, label.resizecam:active,
+label.hamburg:focus,
+label.hamburg:hover {
+	background-color: #333;
+}
+
+label.resizecam {
+	position: absolute;
+	top: 0px;
+	left: 50px;
+	background-image: url(../images/resize.svg);
+	background-repeat: no-repeat;
+	background-size: 30px 30px;
+	background-position: center
 }
 
 input#hamburg {display:none}
