@@ -247,7 +247,7 @@ appBackend = ilsc.Backend(appConfig, flaskApp, ilsc.appDB, MAGIC_USER_ID, schedu
 @flaskApp.route('/', methods=['GET', 'POST'])
 def r_regform():
     form = ilsc.forms.RegisterForm()
-    if form.validate_on_submit():
+    if 'POST' == flask.request.method and form.validate_on_submit():
         guid = appBackend.gen_guid()
         success, msg = appBackend.enter_guest(form, guid)
         if success:
@@ -255,7 +255,7 @@ def r_regform():
             return flask.redirect(flask.url_for('r_getqr', guid=guid, n=1),code=302)
         else:
             flask.flash(msg, 'error')
-    return __render('mainform.html', form = form)
+    return __render('index.html', form = form, action = flask.url_for('r_regform'))
 
 @flaskApp.route('/qr/<guid>', methods=['GET', 'POST'])
 def r_getqr(guid):
@@ -313,9 +313,34 @@ def r_scanning():
                                          loc_id = _loc_id,
                                          automode = _automode,
                                          location = _loc_name,
+                                         webrtc = appConfig.app['webrtc-adapter'],
+                                         vue = appConfig.app['vue'],
                                          target=target)
     except Exception as e:
-        print(e)
+        logging.warning(str(e))
+
+@flaskApp.route('/scan/manual', methods=['GET', 'POST'])
+@flask_login.login_required
+def r_manregform():
+    form = ilsc.forms.RegisterForm()
+    form.agree.data = True
+    if 'POST' == flask.request.method and form.validate_on_submit():
+        guid = appBackend.gen_guid()
+        success, msg = appBackend.enter_guest(form, guid)
+        if success:
+            appBackend.make_qr(guid, scale=20)
+            _user = appBackend.get_current_user()
+            _loc_id = _user.location.id
+            msg = f"Erfolgreich angelegt<br/>GUID: {guid}"
+            success, msg2 = appBackend.guest_checkin(guid, _loc_id)
+            if success:
+                appBackend.broadcast_counter(_loc_id)
+                msg = msg + '<br/>' + msg2
+                flask.flash(msg, 'success' if success else 'error')
+            return flask.redirect(flask.url_for('r_manregform'),code=302)
+        else:
+            flask.flash(msg, 'error')
+    return __render('mainform.html', form = form, action = flask.url_for('r_manregform'), hideagree = True)
 
 @flaskApp.route('/signin', methods=['GET', 'POST'])
 def r_signin():
@@ -385,7 +410,6 @@ def r_user_add():
     form.roles.choices = ilsc.Roles.get_roles_pairs(exclude)
 
     if 'POST' == flask.request.method and form.validate_on_submit():
-        #TODO: give feedback
         success, msg = appBackend.add_user(form)
         flask.flash(msg, 'success' if success else 'error')
         return flask.redirect(flask.url_for('r_users'),code=302)
