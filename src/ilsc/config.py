@@ -46,6 +46,7 @@ class Config(object):
         self.app['cleanonstart'] = False
         self.app['cleancron'] = 6
         self.app['timezone'] = 'Europe/Berlin'
+        self.app['cooldown'] = 10.0
         # Section [http]
         self.http = {}
         self.http['address'] = ''

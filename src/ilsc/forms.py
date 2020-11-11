@@ -15,12 +15,13 @@ __all__ = [
     'LocationForm',
     'OrganisationForm',
     'OrganisationRegForm',
-    'OrganisationSwitchForm'
+    'OrganisationSwitchForm',
+    'SelfCheckoutForm'
 ]
 
 from datetime import date
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SelectField, SelectMultipleField, widgets
+from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SelectField, SelectMultipleField, HiddenField, widgets
 from wtforms.compat import itervalues
 from wtforms.fields.html5 import DateField
 from wtforms.validators import InputRequired, length, DataRequired, EqualTo, ValidationError, Regexp
@@ -247,3 +248,15 @@ class OrganisationRegForm(OrganisationForm, UserAddForm):
         '''
         __ordered = OrderedDict([(k, self._fields[k]) for k in self.__order])
         return iter(itervalues(__ordered))
+
+
+class SelfCheckoutForm(FlaskForm):
+    '''
+    simple selfcheckout form
+    '''
+    guid = HiddenField(label = 'guid',
+                       description='guid',
+                       id='guid',
+                       #render_kw={'placeholder': 'Bitte Namen eingeben', 'maxlength':'256'}
+                       )
+    __order = ['csrf_token', 'guid']

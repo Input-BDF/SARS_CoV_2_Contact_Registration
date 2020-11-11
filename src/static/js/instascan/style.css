@@ -167,11 +167,86 @@ content: "⇓";
 .cameras #camlist {
 	z-index: 1;
 	position: relative;
-	background-color: #fff;
+	/*background-color: #fff;*/
+	padding:0px;
 }
 .cameras.hide #camlist {
 	display: none;
 }
 #preview {
 	border: 0px solid red;
+}
+
+#scanmenu {
+	z-index: 1;
+	position: absolute;
+	transition: max-height 1.0s ease-out;
+	max-height: 0px;
+	overflow: hidden;
+}
+
+#scanmenu.checked {
+	transition: max-height 1.0s ease-in;
+	max-height: 100%;
+}
+
+#scanmenu_list li {
+	background-color: #607d8b;
+	padding: 5 10;
+	cursor: pointer;
+}
+#scanmenu_list li#cams,
+#scanmenu_list {
+	padding:0;
+}
+#scanmenu_list li a {
+	color: #fff;
+	font-weight: bold;
+}
+#scanmenu_list li a:hover,
+#scanmenu_list li a:focus {
+	text-decoration: none;
+}
+#scanmenu_list li:focus,
+#scanmenu_list li:hover {
+	background-color: #506d7b;
+}
+#scanheader {
+	background-color: #506d7b;
+	height: 39px;
+}
+label.hamburg { 
+   display: block;
+   background: #555; width: 40px; height: 39px; 
+   position: relative; 
+   margin-left: 5px; /*margin-right: auto;*/
+   border-radius: 4px; 
+}
+
+input#hamburg {display:none}
+
+.line { 
+   position: absolute; 
+   left:5px;
+   height: 4px; width: 30px; 
+   background: #fff; border-radius: 2px;
+   display: block; 
+   transition: 0.5s; 
+   transform-origin: center; 
+}
+
+.line:nth-child(1) { top: 8px; }
+.line:nth-child(2) { top: 18px; }
+.line:nth-child(3) { top: 28px; }
+
+#hamburg:checked + .hamburg .line:nth-child(1){
+   transform: translateY(10px) rotate(-45deg);
+}
+
+#hamburg:checked + .hamburg .line:nth-child(2){
+   opacity:0;
+}
+
+#hamburg:checked + .hamburg .line:nth-child(3){
+   transform: translateY(-10px) rotate(45deg);
 }

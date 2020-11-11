@@ -13,6 +13,13 @@
 		<p>Party smart und Danke!!! &#128536;</p> 
 	</div>
 {% endif %}
+{% if checked_in and form: %}
+	<form id="selfcheckout" method="POST" action="/qr/{{guid}}">
+		{{ form.csrf_token }}
+		{{ form.guid }}
+		<input id="checkoutsubmit" type="submit" value="Self-Checkout">
+	</form>
+{% endif %}
 <div id="qrwrapper"><img class="qrcode" src="{{ url_for('static', filename='codes/{}.png'.format(guid)) }}"/></div>
 {% if info: %}
 <div>

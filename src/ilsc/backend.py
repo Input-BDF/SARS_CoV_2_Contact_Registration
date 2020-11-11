@@ -4,7 +4,6 @@ Created on 06.06.2020
 
 @author: Input
 '''
-from sqlalchemy.engine import strategies
 
 __all__ = ['Backend']
 
@@ -28,7 +27,7 @@ from sqlalchemy import and_, or_, between
 from sqlalchemy import exc
 
 from ilsc.database import DBGuest, DBCheckin, User, DBOrganisations, DBLocations, Roles, ILSCMeta, DBDeleteProtocol
-from ilsc import caesar
+from ilsc import caesar, cooldown as CD
 
 from bs4 import BeautifulSoup
 
@@ -113,7 +112,8 @@ class Backend(object):
         self.superuser = superuser
         self.init_websocket()
         self.scheduler = scheduler
-        self.ws_token = b64encode(os.urandom(24)).decode('utf-8')
+        self.ws_token = b64encode(os.urandom(24))
+        self.guid_queue = CD.CoolDown()
 
     def init_websocket(self):
         '''
@@ -160,25 +160,21 @@ class Backend(object):
             if 'exists' in _data.keys():
                 cleaned_guid = clean_strings(_data['exists'])
                 _known = self.check_guid_is_checkedin(cleaned_guid, _data['devision'])
-                return json.dumps({'exists': self.check_guid(cleaned_guid), 'known':_known}), isBinary
+                payload = False
+                _isqueued = cleaned_guid in self.guid_queue 
+                if not _isqueued:
+                    payload = json.dumps({'exists': self.check_guid(cleaned_guid), 'known':_known})
+                if _isqueued:
+                    payload = json.dumps({'cooldown': 1})
+                return payload, isBinary
+
             if 'checkin' in _data.keys():
-                cleaned_guid = clean_strings(_data['checkin'])
-                devision = int(_data['devision'])
-                success, msg = self.guest_checkin(cleaned_guid, devision)
-                self._broadcast(json.dumps({
-                                            'COUNTER' : self.count_guests(devision),
-                                            'DEVISION' : devision
-                                            }))
-                return json.dumps({'checkin': success, 'msg': msg}), isBinary
+                payload = self.handle_check_inout(_data, 'checkin')
+                return payload, isBinary
             if 'checkout' in _data.keys():
-                cleaned_guid = clean_strings(_data['checkout'])
-                devision = int(_data['devision'])
-                success, msg = self.guest_checkout(cleaned_guid, devision)
-                self._broadcast(json.dumps({
-                                            'COUNTER' : self.count_guests(devision),
-                                            'DEVISION' : devision
-                                            }))
-                return json.dumps({'checkout': success, 'msg': msg}), isBinary
+                payload = self.handle_check_inout(_data, 'checkout')
+                return payload, isBinary
+
         except Exception as e:
             self.logger.error('Could not send data')
             self.logger.error(e)
@@ -195,8 +191,8 @@ class Backend(object):
         Websocket connection made callback
         '''
         try:
-            cookie_cnt = json.loads(self.decodeFlaskCookie(cookie))
-            if cookie_cnt and 'wst' in cookie_cnt.keys() and cookie_cnt['wst'] == self.ws_token:
+            _cookie_cnt = json.loads(self.decodeFlaskCookie(cookie))
+            if _cookie_cnt and 'wst' in _cookie_cnt.keys() and clean_strings(_cookie_cnt['wst']) == self.ws_token:
                 return True
         except Exception as e:
             self.logger.warning(f'Invalid ws connection request: {e}')
@@ -244,6 +240,27 @@ class Backend(object):
             self.gen_guid()
         return guid
 
+    def handle_check_inout(self, _data, _action):
+        '''
+        simple handler function for checkin/checkout
+        '''
+        handlers = {'checkin': self.guest_checkin,
+                    'checkout': self.guest_checkout}
+        cleaned_guid = clean_strings(_data[_action])
+        _isqueued = cleaned_guid in self.guid_queue
+        if not _isqueued:
+            try:
+                devision = int(_data['devision'])
+                success, msg = handlers[_action](cleaned_guid, devision)
+                self._broadcast(json.dumps({
+                                            'COUNTER' : self.count_guests(devision),
+                                            'DEVISION' : devision
+                                            }))
+                return json.dumps({_action: success, 'msg': msg})
+            except Exception as e:
+                print(e)
+        return False
+
     def check_guid(self, guid):
         '''
         Query Database if guid exists in guest table
@@ -261,19 +278,23 @@ class Backend(object):
             except Exception as e:
                 self.logger.debug(e)
 
-    def check_guid_is_checkedin(self, guid, devision):
+    def check_guid_is_checkedin(self, guid, devision = None):
         '''
         Query Database if guid exists in checkin
         '''
         with self.flaskApp.app_context():
             try:
+                _delta = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S.%f")
+                #TODO: think about if day-check is really needed
                 c_str = clean_strings(guid)
-                lookup = and_(DBCheckin.guid==c_str,
-                              DBCheckin.checkout == None,
-                              DBCheckin.devision == devision)
-                _query = self.appDB.session.query(DBCheckin).filter(lookup).order_by(DBCheckin.checkin.desc())
+                _lookup = and_(DBCheckin.guid==c_str,
+                              DBCheckin.checkin >= _delta,
+                              DBCheckin.checkout == None)
+                if devision:
+                    _lookup.append(DBCheckin.devision == devision)
+                _query = self.appDB.session.query(DBCheckin).filter(_lookup).order_by(DBCheckin.checkin.desc())
                 _guest = _query.first()
-                _lastaction = self.check_cooldown(guid, devision)
+                #_lastaction = self.check_cooldown(guid, devision)
                 if _guest:
                     #guest is checked in
                     return True
@@ -301,12 +322,9 @@ class Backend(object):
                               DBCheckin.checkin < _delta,
                               DBCheckin.checkout < _delta,
                               DBCheckin.devision == devision)
-                '''
-                lookup = and_(DBCheckin.guid==c_str,
-                              DBCheckin.checkout != 0,
-                              DBCheckin.devision == devision)
-                '''
-                _query = self.appDB.session.query(DBCheckin).filter(or_(lookup_notchecked_out, lookup_checked_out)).order_by(DBCheckin.checkout.desc())
+
+                _query = self.appDB.session.query(DBCheckin).filter(or_(lookup_notchecked_out, lookup_checked_out))\
+                                                            .order_by(DBCheckin.checkout.desc())
                 _guest = _query.first()
                 if _guest:
                     #guest is checked in/out within cooldown
@@ -354,13 +372,15 @@ class Backend(object):
                         new_guest = DBCheckin(guid = guid, devision = devision)
                         self.appDB.session.add(new_guest)
                         self.appDB.session.commit()
+                    _ttl = float(self.config.app['cooldown'])
+                    self.guid_queue.add(guid, _ttl)
                     return True, 'Checkin erfolgreich'
             else: return False, 'Fehler beim Checkin'
         except Exception as e:
             self.logger.debug(e)
             return False, 'Schwerer Fehler (x00002) beim Checkin'
 
-    def guest_checkout(self, guid, devision):
+    def guest_checkout(self, guid, devision=None):
         '''
         Query Database if guid exists in checkin and update @ checkout time
         '''
@@ -368,18 +388,29 @@ class Backend(object):
             try:
                 c_str = clean_strings(guid)
                 days = int(self.config.app['keepdays'])
-                lookup = and_(DBCheckin.guid==c_str,
-                              DBCheckin.checkin+timedelta(days=days)<datetime.now(),
-                              DBCheckin.checkout==None,
-                              DBCheckin.devision == devision)
-                _query = self.appDB.session.query(DBCheckin).filter(lookup).order_by(DBCheckin.checkin.desc())
+                _lookup = and_(DBCheckin.guid==c_str,
+                              #TODO: Test this time stuff different
+                              #DBCheckin.checkin+timedelta(days=days)<datetime.now(),
+                              DBCheckin.checkout==None
+                              )
+                if devision:
+                    _lookup.append(DBCheckin.devision == devision)
+                _query = self.appDB.session.query(DBCheckin).filter(_lookup).order_by(DBCheckin.checkin.desc())
                 _guest = _query.first()
                 if _guest:
                     _guest.checkout=datetime.now()
                     self.appDB.session.commit()
+                    _ttl = float(self.config.app['cooldown'])
+                    self.guid_queue.add(c_str, _ttl)
+                    if devision == None:
+                        #Emmit new counter for checkedout division since they will not know if not
+                        self._broadcast(json.dumps({
+                                                    'COUNTER' : self.count_guests(_guest.devision),
+                                                    'DEVISION' : _guest.devision
+                                                    }))
                     return True, 'Checkout erfolgreich'
                 else:
-                    return False, 'Da gabs nix für nen checkout.'
+                    return False, 'Da gabs nix für nen Checkout.'
             except Exception as e:
                 self.logger.debug(e)
                 return False, 'Schwerer Fehler (x00002) beim Checkout. Oder der wurde grad schon ausgecheckt'
