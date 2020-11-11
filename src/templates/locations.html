@@ -1,11 +1,12 @@
 {% extends "main.html" %}
 {% block body %}
+<h3>Locations</h3>
 <table id="loctable" class="optionstable">
 <tbody>
 <tr>
-  <th>Location</th>
-  <th>Autoleave</th>
-  <th>Checkoutmode</th>
+  <th>Name</th>
+  <th>Cron</th>
+  <th>Autoscan</th>
   <th style="width:16%;" colspan="2" class="btn_option"><a href="{{ url_for('r_location_add') }}"><button>Add Location</button></a></th>
 </tr>
 {% for loc in locations %}
@@ -15,7 +16,7 @@
   <td>
 
   {% if loc.autoscancheckout %}
-    &check;
+    &check; Full
   {% endif %}
 
   </td>

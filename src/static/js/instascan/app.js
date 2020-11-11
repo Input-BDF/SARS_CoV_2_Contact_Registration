@@ -43,6 +43,16 @@
 							CommitCode.show_message('invalid','valid', 'Bereit für Checkout', true);
 							$('#checkout').show();
 							$('#checkin').hide();
+							if (automode == 1) {
+								CommitCode.websocket.send(
+										JSON.stringify(
+												{
+												'checkout': $('#checkout').val(),
+												'devision': loc_id,
+												}
+										)
+									);
+								}
 						}
 						if (data['exists'] == true && data['known'] == false) {
 							$("#scanmsg").hide();
@@ -63,6 +73,11 @@
 							$('#checkin').hide();
 							CommitCode.show_message('valid','invalid', 'Ungültiger oder unbekannter QR-Code', true);
 						}
+					}
+					if( ('cooldown' in data) && data['cooldown'] == 1) {
+						CommitCode.show_message('valid','invalid', 'Cooldown aktiv', true);
+						$('#checkout').hide();
+						$('#checkin').hide()
 					}
 					if('checkin' in data) {
 						if (data['checkin'] == true) {
@@ -232,5 +247,9 @@
 			var position = $('#preview').position().top + 5;
 			$('#preview').css({'max-height' : winheight - position});
 		};
+		$("#hamburgicon").click( function () {
+			$("#scanmenu").toggleClass("checked");
+			console.log('checking');
+		});
 	});
 })(jQuery);

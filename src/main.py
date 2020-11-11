@@ -257,13 +257,30 @@ def r_regform():
             flask.flash(msg, 'error')
     return __render('mainform.html', form = form)
 
-@flaskApp.route('/qr/<guid>')
+@flaskApp.route('/qr/<guid>', methods=['GET', 'POST'])
 def r_getqr(guid):
     if appBackend.check_guid(guid):
         info = False
+        form = None
         if 'n' in flask.request.args and flask.request.args['n'] == '1':
             info = True
-        return __render('qrcode.html', info=info, guid=guid,host=appConfig.http['address'], port=appConfig.http['port'])
+        _is_checked_in = appBackend.check_guid_is_checkedin(guid)
+        #if _is_checked_in:
+        form = ilsc.forms.SelfCheckoutForm()
+        form.guid.data = guid
+        if 'POST' == flask.request.method and form.validate_on_submit():
+            success, msg = appBackend.guest_checkout(form.guid.data)
+            if success:
+                _is_checked_in = False
+                form = None
+            flask.flash(msg, 'success' if success else 'error')
+            return flask.redirect(f'/qr/{guid}',302)
+        return __render('qrcode.html', form = form,
+                                       info=info,
+                                       guid=guid,
+                                       host=appConfig.http['address'],
+                                       port=appConfig.http['port'],
+                                       checked_in = _is_checked_in)
     return flask.redirect(flask.url_for('r_regform'),code=302)
     #flask.abort(404)
 
@@ -282,7 +299,7 @@ def r_scanning():
         _user = appBackend.get_current_user()
         _loc_id = _user.location.id
         _loc_name = _user.location.name
-
+        _automode = 1 if _user.location.autoscancheckout else 0
         count = appBackend.count_guests(_loc_id)
         target = {1 : flask.url_for('r_guests'),
                   2 : flask.url_for('r_guests'),
@@ -290,8 +307,13 @@ def r_scanning():
                   4 : flask.url_for('r_locations')
                   }
         #add websocket auth token to session cookie
-        flask.session['wst'] = appBackend.ws_token
-        return __render('scanning.html', wsocket=appConfig.websocket, count = count, loc_id = _loc_id, location = _loc_name, target=target)
+        flask.session['wst'] = appBackend.ws_token.decode('utf-8')
+        return __render('scanning.html', wsocket=appConfig.websocket,
+                                         count = count,
+                                         loc_id = _loc_id,
+                                         automode = _automode,
+                                         location = _loc_name,
+                                         target=target)
     except Exception as e:
         print(e)
 

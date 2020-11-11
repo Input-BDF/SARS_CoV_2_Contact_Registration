@@ -129,6 +129,7 @@ form#regform > textarea {
 	display: block;
 }
 
+form #checkoutsubmit,
 form #regsubmit {
 	padding: 5px;
 	border-radius: 10px;
@@ -138,12 +139,22 @@ form #regsubmit {
 	border: 1px solid #d46a6a;
 	cursor: pointer;
 }
-
+form #checkoutsubmit:hover,
+form #checkoutsubmit:focus,
 form #regsubmit:hover,
 form #regsubmit:focus {
 	background-color: #d46a6a;
 	border: 1px solid #550000;
 	color: #550000;
+}
+
+form #checkoutsubmit {
+	margin:auto;
+	max-width:425px;
+	width:100%;
+	display:block;
+	margin-top:5px;
+	margin-bottom:15px;
 }
 
 .qrcode {

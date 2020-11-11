@@ -13,7 +13,7 @@ or
 python3 migrate.py db migrate -m "Initial migration."
 *make changes
 python3 migrate.py db migrate
-python3 upgrade
+python3 migrate.py db upgrade
 '''
 
 from datetime import datetime

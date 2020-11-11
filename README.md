@@ -46,6 +46,10 @@ Scanning is not available for some ios devices as the used library can not acces
 
 Do a backup and check [UPGRADE.md](UPGRADE.md). Things can go wrong. If you have any trouble -> contact me!
 
+## Development tips aka things that I always run into
+
+While testing locally with a webcam and ssl with self signed certificates you have to accept these certificates for both ports (https and wss) in your browser. To do so visit ht<span>tps://127.0.0.1:[http-port]</span> and ht<span>tps://127.0.0.1:[ws-port]</span>. Else you will not be able to establish a websocket connection.
+
 ## Used third party modules  
 https://github.com/schmich/instascan thx a lot, nice work done dude
 

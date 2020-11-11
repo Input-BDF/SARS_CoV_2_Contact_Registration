@@ -11,6 +11,7 @@ cleanonstart = False
 #Cron running to check obsolete data
 cleancron = 6
 timezone = Europe/Berlin
+cooldown = 10.0
 
 [http]
 usessl = True

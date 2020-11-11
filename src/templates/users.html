@@ -1,9 +1,10 @@
 {% extends "main.html" %}
 {% block body %}
+<h3>Users</h3>
 <table id="usertable" class="optionstable">
 <tbody>
 <tr>
-  <th>Nutzer</th>
+  <th>Name</th>
   <th>Location</th>
   <th>Rollen</th>
   <th style="width:21%;" class="btn_option"><a href="{{ url_for('r_user_add') }}"><button>Add User</button></a></th>
