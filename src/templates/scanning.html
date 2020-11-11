@@ -46,6 +46,7 @@
 									<ul id="camlist">
 										<li v-if="cameras.length === 0" class="empty">No cameras found</li>
 										<li v-for="camera in cameras">
+											<span class="bio">&#9763;</span>
 											<span v-if="camera.id == activeCameraId" :title="formatName(camera.name)" class="active">{{'{{'}} formatName(camera.name) {{'}}'}}</span>
 											<span v-if="camera.id != activeCameraId" :title="formatName(camera.name)">
 												<a @click.stop="selectCamera(camera)">{{'{{'}} formatName(camera.name) {{'}}'}}</a>
