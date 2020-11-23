@@ -708,10 +708,6 @@ def r_upgrade():
     try:
         _user = appBackend.get_current_user()
         #TODO: keep in mind, that this condition is only for version v0.5 So implement version check 
-        if _user.location == None:
-            '''
-            render organisation add form
-            '''
         success, msg = appBackend.upgrade()
         flask.flash(msg, 'success' if success else 'error')
         return flask.redirect(flask.url_for('r_locations'),code=302)
