@@ -641,7 +641,7 @@ def r_location_edit(lid):
     else:
         return flask.redirect(flask.url_for('r_locations'),code=302)
 
-@flaskApp.route('/user/delete/<lid>', methods=['GET', 'POST'])
+@flaskApp.route('/locations/delete/<lid>', methods=['GET', 'POST'])
 @flask_login.login_required
 @check_roles(roles=['LocationAdmin'])
 def r_location_delete(lid):
