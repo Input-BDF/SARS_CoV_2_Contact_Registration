@@ -875,10 +875,13 @@ class Backend(object):
         '''
         createw qr-code based on guid
         '''
-        qr_code = pyqrcode.create(guid,error=error, version=qrversion, mode="binary")
-        #qr_code.svg('file.svg', scale=scale, quiet_zone=quiet, svgclass="glad_qrcode", xmldecl=True)
-        qr_code.png(".//static//codes//{}.png".format(guid), scale=scale, module_color=[0, 0, 0], background=[255, 255, 255])
-        return qr_code
+        try:
+            qr_code = pyqrcode.create(guid,error=error, version=qrversion, mode="binary")
+            #qr_code.svg('file.svg', scale=scale, quiet_zone=quiet, svgclass="glad_qrcode", xmldecl=True)
+            qr_code.png(".//static//codes//{}.png".format(guid), scale=scale, module_color=[0, 0, 0], background=[255, 255, 255])
+            return qr_code
+        except Exception as e:
+            self.logger.error(f'Could not create QR Code: {e}')
 
     def upgrade(self):
         #TODO: Keep this here only as long as needed (alpha>beta!>ceta)
