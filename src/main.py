@@ -357,7 +357,8 @@ def r_signin():
         if user and user.validate_password(password):
             if user.active:
                 flask_login.login_user(user)
-                next_url = flask.session.get('next_url', '/')
+                #next_url = flask.session.get('next_url', '/')
+                next_url = '/scan'
                 if 'next_url' in flask.session.keys():
                     flask.session.pop('next_url')
                 return flask.redirect(next_url,code=302)

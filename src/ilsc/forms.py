@@ -53,8 +53,9 @@ class RegisterForm(FlaskForm):
                             render_kw={'placeholder': 'Adresse oder Telefonnummer', 'maxlength':'400'},
                             )
     agree = BooleanField(label = 'Ich stimme der Speicherung meiner angegebenen Daten zur Umsetzung der Bestimmungen der '\
-                         '<a href="https://corona.thueringen.de/behoerden/ausgewaehlte-verordnungen" target="_blank">Thüringer'\
-                         ' Verordnung zur Neuordnung der erforderlichen Maßnahmen zur Eindämmung der Ausbreitung des Coronavirus SARS-CoV-2</a> zu.',
+                         '<a href="https://www.tmasgff.de/covid-19/verordnung" target="_blank">Thüringer'\
+                         ' Verordnung zur Regelung infektionsschutzrechtlicher Maßnahmen und schrittweisen weiteren Eindämmung'\
+                         ' der Ausbreitung des Coronavirus SARS-CoV-2</a> zu.',
                          validators=[InputRequired(message='Bitte Zustimmung geben')])
 
 class MultiCheckboxField(SelectMultipleField):

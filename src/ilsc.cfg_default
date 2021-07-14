@@ -13,9 +13,9 @@ cleancron = 6
 timezone = Europe/Berlin
 cooldown = 10.0
 #webrtc-adapter version loaded from cdnjs (default:  3.3.3)
-webrtc-adapter = 3.3.3
+webrtc-adapter = 6.1.4
 #vue version loaded from cdnjs (default: 2.1.10)
-vue = 2.1.10
+vue = 2.6.12
 
 [http]
 usessl = True
